@@ -1,0 +1,204 @@
+/**
+ * PC Configurator Cart & Checkout Styles
+ *
+ * @package  W2F_PC_Configurator
+ * @since    1.0.0
+ */
+
+/* ============================================
+   CART PAGE
+   ============================================ */
+
+.cart .w2f-pc-configuration-summary {
+	margin-top: 10px;
+	padding: 15px;
+	background: #f9f9f9;
+	border-left: 3px solid #0073aa;
+	border-radius: 4px;
+}
+
+.cart .w2f-pc-configuration-summary strong {
+	display: block;
+	margin-bottom: 10px;
+	color: #0073aa;
+	font-size: 14px;
+}
+
+.cart .w2f-pc-configuration-summary dl {
+	margin: 0;
+}
+
+.cart .w2f-pc-configuration-summary dt {
+	font-weight: 600;
+	margin-top: 8px;
+	color: #333;
+	font-size: 13px;
+}
+
+.cart .w2f-pc-configuration-summary dt:first-child {
+	margin-top: 0;
+}
+
+.cart .w2f-pc-configuration-summary dd {
+	margin-left: 15px;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 13px;
+}
+
+/* WooCommerce cart item data */
+.cart .woocommerce-cart-form__cart-item .product-name dl {
+	margin-top: 10px;
+}
+
+.cart .woocommerce-cart-form__cart-item .product-name dt {
+	font-weight: 600;
+	margin-top: 8px;
+	color: #333;
+	font-size: 13px;
+}
+
+.cart .woocommerce-cart-form__cart-item .product-name dt:first-child {
+	margin-top: 0;
+}
+
+.cart .woocommerce-cart-form__cart-item .product-name dd {
+	margin-left: 15px;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 13px;
+}
+
+/* ============================================
+   CHECKOUT PAGE
+   ============================================ */
+
+.checkout .w2f-pc-configuration-summary {
+	margin-top: 10px;
+	padding: 15px;
+	background: #f9f9f9;
+	border-left: 3px solid #0073aa;
+	border-radius: 4px;
+}
+
+.checkout .w2f-pc-configuration-summary strong {
+	display: block;
+	margin-bottom: 10px;
+	color: #0073aa;
+	font-size: 14px;
+}
+
+.checkout .w2f-pc-configuration-summary dl {
+	margin: 0;
+}
+
+.checkout .w2f-pc-configuration-summary dt {
+	font-weight: 600;
+	margin-top: 8px;
+	color: #333;
+	font-size: 13px;
+}
+
+.checkout .w2f-pc-configuration-summary dt:first-child {
+	margin-top: 0;
+}
+
+.checkout .w2f-pc-configuration-summary dd {
+	margin-left: 15px;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 13px;
+}
+
+/* WooCommerce checkout item data */
+#order_review .shop_table .cart_item dl {
+	margin-top: 10px;
+}
+
+#order_review .shop_table .cart_item dt {
+	font-weight: 600;
+	margin-top: 8px;
+	color: #333;
+	font-size: 13px;
+}
+
+#order_review .shop_table .cart_item dt:first-child {
+	margin-top: 0;
+}
+
+#order_review .shop_table .cart_item dd {
+	margin-left: 15px;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 13px;
+}
+
+/* ============================================
+   ORDER DETAILS & EMAILS
+   ============================================ */
+
+.woocommerce-order-details .w2f-pc-configuration-summary,
+.woocommerce-email .w2f-pc-configuration-summary {
+	margin-top: 10px;
+	padding: 15px;
+	background: #f9f9f9;
+	border-left: 3px solid #0073aa;
+	border-radius: 4px;
+}
+
+.woocommerce-order-details .w2f-pc-configuration-summary strong,
+.woocommerce-email .w2f-pc-configuration-summary strong {
+	display: block;
+	margin-bottom: 10px;
+	color: #0073aa;
+	font-size: 14px;
+}
+
+.woocommerce-order-details .w2f-pc-configuration-summary dl,
+.woocommerce-email .w2f-pc-configuration-summary dl {
+	margin: 0;
+}
+
+.woocommerce-order-details .w2f-pc-configuration-summary dt,
+.woocommerce-email .w2f-pc-configuration-summary dt {
+	font-weight: 600;
+	margin-top: 8px;
+	color: #333;
+	font-size: 13px;
+}
+
+.woocommerce-order-details .w2f-pc-configuration-summary dt:first-child,
+.woocommerce-email .w2f-pc-configuration-summary dt:first-child {
+	margin-top: 0;
+}
+
+.woocommerce-order-details .w2f-pc-configuration-summary dd,
+.woocommerce-email .w2f-pc-configuration-summary dd {
+	margin-left: 15px;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 13px;
+}
+
+/* Order item meta in tables */
+.woocommerce-table--order-details .wc-item-meta dt,
+.woocommerce-email-order-items .wc-item-meta dt {
+	font-weight: 600;
+	margin-top: 8px;
+	color: #333;
+	font-size: 13px;
+}
+
+.woocommerce-table--order-details .wc-item-meta dt:first-child,
+.woocommerce-email-order-items .wc-item-meta dt:first-child {
+	margin-top: 0;
+}
+
+.woocommerce-table--order-details .wc-item-meta dd,
+.woocommerce-email-order-items .wc-item-meta dd {
+	margin-left: 15px;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 13px;
+}
+
