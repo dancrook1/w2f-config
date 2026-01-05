@@ -140,6 +140,9 @@ class W2F_PC_Meta_Box_Product_Data {
 					'show_search'        => isset( $component_data['show_search'] ) ? 'yes' : 'no',
 					// Always enable dropdown images for dropdown mode (default behavior).
 					'show_dropdown_image' => 'yes',
+					'enable_quantity'    => isset( $component_data['enable_quantity'] ) ? 'yes' : 'no',
+					'min_quantity'       => isset( $component_data['min_quantity'] ) ? max( 1, intval( $component_data['min_quantity'] ) ) : 1,
+					'max_quantity'       => isset( $component_data['max_quantity'] ) ? max( 1, intval( $component_data['max_quantity'] ) ) : 99,
 					'options'            => array_values( $options ), // Re-index array.
 					'categories'         => array_values( $categories ), // Re-index array.
 				);

@@ -12,6 +12,7 @@
  * Requires PHP: 7.4
  * WC requires at least: 8.0
  * WC tested up to: 9.0
+ * Custom-Order-Table: 1
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -83,6 +84,9 @@ class W2F_PC_Configurator {
 	 * Constructor.
 	 */
 	public function __construct() {
+		// Declare HPOS (High-Performance Order Storage) compatibility early.
+		add_filter( 'woocommerce_feature_compatibility', array( $this, 'declare_hpos_compatibility' ), 10, 1 );
+		
 		// Entry point.
 		add_action( 'plugins_loaded', array( $this, 'initialize_plugin' ), 9 );
 	}
@@ -130,6 +134,17 @@ class W2F_PC_Configurator {
 	}
 
 	/**
+	 * Declare HPOS (High-Performance Order Storage) compatibility.
+	 *
+	 * @param  array $compatibility Array of compatibility features.
+	 * @return array
+	 */
+	public function declare_hpos_compatibility( $compatibility ) {
+		$compatibility['custom_order_tables'] = true;
+		return $compatibility;
+	}
+
+	/**
 	 * Fire in the hole!
 	 */
 	public function initialize_plugin() {
@@ -160,6 +175,12 @@ class W2F_PC_Configurator {
 		}
 
 		$this->includes();
+
+		// Check if HPOS is enabled (for debugging/logging purposes).
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' ) ) {
+			$hpos_enabled = \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+			// HPOS is supported via proper WooCommerce APIs, no action needed.
+		}
 
 		// Register product class filter (needed on both frontend and admin).
 		add_filter( 'woocommerce_product_class', array( $this, 'woocommerce_product_class' ), 10, 4 );

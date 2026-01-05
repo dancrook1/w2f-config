@@ -13,11 +13,14 @@
 		defaultConfiguration: {},
 		defaultPrice: 0,
 		currentConfiguration: {},
+		currentQuantities: {},
 		isDefaultConfig: true,
 		domCache: {},
 		updateTimeout: null,
 
 		init: function() {
+			var self = this;
+			
 			if (typeof w2f_pc_params === 'undefined') {
 				return;
 			}
@@ -26,6 +29,15 @@
 			this.defaultConfiguration = w2f_pc_params.default_configuration || {};
 			this.defaultPrice = parseFloat(w2f_pc_params.default_price) || 0;
 			this.currentConfiguration = $.extend({}, this.defaultConfiguration);
+			this.currentQuantities = {};
+			
+			// Initialize quantities from form inputs.
+			$('.w2f-pc-quantity-input').each(function() {
+				var $input = $(this);
+				var componentId = $input.data('component-id');
+				var quantity = parseInt($input.val()) || 1;
+				self.currentQuantities[componentId] = quantity;
+			});
 
 			// Initialize DOM cache.
 			this.initializeDomCache();
@@ -183,7 +195,10 @@
 				var componentId = $(this).data('component-id');
 				var productId = $(this).val() ? parseInt($(this).val()) : 0;
 
-				if (productId) {
+				// Handle "None" option (value 0) for optional components.
+				if (productId === 0 || productId === '0') {
+					delete self.currentConfiguration[componentId];
+				} else if (productId) {
 					self.currentConfiguration[componentId] = productId;
 				} else {
 					delete self.currentConfiguration[componentId];
@@ -194,6 +209,36 @@
 				self.updateTimeout = setTimeout(function() {
 					self.updateConfiguration(componentId);
 				}, 150);
+			});
+			
+			// Quantity input change.
+			$(document).on('change input', '.w2f-pc-quantity-input', function() {
+				var $input = $(this);
+				var componentId = $input.data('component-id');
+				var minQuantity = parseInt($input.data('min-quantity')) || 1;
+				var maxQuantity = parseInt($input.data('max-quantity')) || 99;
+				var quantity = parseInt($input.val()) || minQuantity;
+				
+				// Validate min/max.
+				if (quantity < minQuantity) {
+					quantity = minQuantity;
+					$input.val(quantity);
+				} else if (quantity > maxQuantity) {
+					quantity = maxQuantity;
+					$input.val(quantity);
+				}
+				
+				// Update quantities object.
+				self.currentQuantities[componentId] = quantity;
+				
+				// Only update if a product is selected for this component.
+				if (self.currentConfiguration[componentId]) {
+					// Debounce updates to prevent excessive AJAX calls.
+					clearTimeout(self.updateTimeout);
+					self.updateTimeout = setTimeout(function() {
+						self.updateConfiguration(componentId);
+					}, 150);
+				}
 			});
 
 			// Custom dropdown toggle.
@@ -220,53 +265,64 @@
 				var productId = parseInt($option.data('product-id'));
 				var $hiddenInput = $dropdown.find('.component-select');
 				
-				// Update selected option.
-				$dropdown.find('.w2f-pc-dropdown-option').removeClass('selected');
-				$option.addClass('selected');
-				
-				// Update display - only show product name, not the price.
-				var $selected = $dropdown.find('.w2f-pc-dropdown-selected');
-				var $optionImage = $option.find('.w2f-pc-dropdown-option-image');
-				// Get image source and alt from the option.
-				var imageSrc = $optionImage.attr('src');
-				var imageAlt = $optionImage.attr('alt');
-				
-				// Get product name - prioritize data-product-name attribute, then clean text extraction.
-				var productName = $option.data('product-name');
-				if (!productName) {
-					// Fallback: get from option text, but clean it thoroughly.
-					var $optionText = $option.find('.w2f-pc-dropdown-option-text');
-					if ($optionText.length) {
-						// Remove any warning emoji spans first.
-						$optionText.find('.w2f-pc-warning-emoji').remove();
-						// Get text content and clean it.
-						productName = $optionText.text().trim();
-						// Remove warning emoji characters and price suffixes.
-						productName = productName.replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-					} else {
-						// Last resort: use image alt text.
-						productName = imageAlt || '';
+				// Handle "None" option (value 0).
+				if (productId === 0 || productId === '0') {
+					$hiddenInput.val(0);
+					delete self.currentConfiguration[componentId];
+					
+					// Update display for "None" option.
+					var $selected = $dropdown.find('.w2f-pc-dropdown-selected');
+					$selected.find('img').remove();
+					$selected.find('.w2f-pc-dropdown-text').empty().text('None');
+				} else {
+					$hiddenInput.val(productId);
+					self.currentConfiguration[componentId] = productId;
+					
+					// Update selected option.
+					$dropdown.find('.w2f-pc-dropdown-option').removeClass('selected');
+					$option.addClass('selected');
+					
+					// Update display - only show product name, not the price.
+					var $selected = $dropdown.find('.w2f-pc-dropdown-selected');
+					var $optionImage = $option.find('.w2f-pc-dropdown-option-image');
+					// Get image source and alt from the option.
+					var imageSrc = $optionImage.attr('src');
+					var imageAlt = $optionImage.attr('alt');
+					
+					// Get product name - prioritize data-product-name attribute, then clean text extraction.
+					var productName = $option.data('product-name');
+					if (!productName) {
+						// Fallback: get from option text, but clean it thoroughly.
+						var $optionText = $option.find('.w2f-pc-dropdown-option-text');
+						if ($optionText.length) {
+							// Remove any warning emoji spans first.
+							$optionText.find('.w2f-pc-warning-emoji').remove();
+							// Get text content and clean it.
+							productName = $optionText.text().trim();
+							// Remove warning emoji characters and price suffixes.
+							productName = productName.replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
+						} else {
+							// Last resort: use image alt text.
+							productName = imageAlt || '';
+						}
+					}
+					
+					// Remove ALL images from the selected area (including any duplicates).
+					$selected.find('img').remove();
+					// Create a fresh image element (don't clone to avoid class conflicts).
+					var $newImage = $('<img>', {
+						src: imageSrc,
+						alt: imageAlt,
+						class: 'w2f-pc-dropdown-image'
+					});
+					// Insert the image before the text span.
+					var $textSpan = $selected.find('.w2f-pc-dropdown-text');
+					if ($textSpan.length) {
+						$textSpan.before($newImage);
+						// Clear and set text to avoid duplication.
+						$textSpan.empty().text(productName);
 					}
 				}
-				
-				// Remove ALL images from the selected area (including any duplicates).
-				$selected.find('img').remove();
-				// Create a fresh image element (don't clone to avoid class conflicts).
-				var $newImage = $('<img>', {
-					src: imageSrc,
-					alt: imageAlt,
-					class: 'w2f-pc-dropdown-image'
-				});
-				// Insert the image before the text span.
-				var $textSpan = $selected.find('.w2f-pc-dropdown-text');
-				if ($textSpan.length) {
-					$textSpan.before($newImage);
-					// Clear and set text to avoid duplication.
-					$textSpan.empty().text(productName);
-				}
-				
-				// Update hidden input.
-				$hiddenInput.val(productId);
 				
 				// Close dropdown.
 				$selected.removeClass('active');
@@ -290,6 +346,15 @@
 				var componentId = $radio.data('component-id');
 				var productId = $radio.val() ? parseInt($radio.val()) : 0;
 				var $option = $radio.closest('.w2f-pc-thumbnail-option');
+				
+				// Handle "None" option (value 0).
+				if (productId === 0 || productId === '0') {
+					delete self.currentConfiguration[componentId];
+				} else if (productId) {
+					self.currentConfiguration[componentId] = productId;
+				} else {
+					delete self.currentConfiguration[componentId];
+				}
 				
 				// Ensure we have the correct component - use data attribute to be precise.
 				var $component = $('.w2f-pc-component[data-component-id="' + componentId + '"]');
@@ -711,7 +776,8 @@
 					action: 'w2f_pc_check_compatibility',
 					nonce: w2f_pc_params.nonce,
 					product_id: self.productId,
-					configuration: self.currentConfiguration
+					configuration: self.currentConfiguration,
+					quantities: self.currentQuantities
 				},
 				success: function(response) {
 					if (response.success) {
@@ -740,7 +806,8 @@
 					action: 'w2f_pc_calculate_price',
 					nonce: w2f_pc_params.nonce,
 					product_id: self.productId,
-					configuration: self.currentConfiguration
+					configuration: self.currentConfiguration,
+					quantities: self.currentQuantities
 				},
 				success: function(response) {
 					if (response.success && response.data) {
@@ -1138,7 +1205,8 @@
 					action: 'w2f_pc_calculate_price',
 					nonce: w2f_pc_params.nonce,
 					product_id: this.productId,
-					configuration: self.currentConfiguration
+					configuration: self.currentConfiguration,
+					quantities: self.currentQuantities
 				},
 				success: function(response) {
 					if (response.success && response.data) {
@@ -1506,9 +1574,15 @@
 				}
 
 				if (productName && componentTitle) {
+					// Check if quantity is enabled and get quantity.
+					var quantityText = '';
+					if (self.currentQuantities[componentId] && self.currentQuantities[componentId] > 1) {
+						quantityText = ' (Qty: ' + self.currentQuantities[componentId] + ')';
+					}
+					
 					// Add to spec list.
 					$specList.append('<dt>' + self.escapeHtml(componentTitle) + ':</dt>');
-					$specList.append('<dd>' + self.escapeHtml(productName) + '</dd>');
+					$specList.append('<dd>' + self.escapeHtml(productName) + self.escapeHtml(quantityText) + '</dd>');
 				} else if (componentTitle) {
 					// If we have a title but no product name, still show the component (might be unselected).
 					// Or log for debugging.
@@ -1978,16 +2052,33 @@
 		},
 
 		addConfigurationToForm: function() {
+			var self = this;
 			// Add configuration as hidden fields.
 			$('input[name^="w2f_pc_configuration"]').remove();
+			$('input[name^="w2f_pc_configuration_quantity"]').remove();
+			
 			$.each(this.currentConfiguration, function(componentId, productId) {
-				$('form.w2f-pc-configurator-form').append(
+				$('form.w2f-pc-configurator-form, form.cart').append(
 					$('<input>').attr({
 						type: 'hidden',
 						name: 'w2f_pc_configuration[' + componentId + ']',
 						value: productId
 					})
 				);
+			});
+			
+			// Add quantities as hidden fields.
+			$.each(this.currentQuantities, function(componentId, quantity) {
+				// Only add quantity if a product is selected for this component.
+				if (self.currentConfiguration[componentId]) {
+					$('form.w2f-pc-configurator-form, form.cart').append(
+						$('<input>').attr({
+							type: 'hidden',
+							name: 'w2f_pc_configuration_quantity[' + componentId + ']',
+							value: quantity
+						})
+					);
+				}
 			});
 		},
 

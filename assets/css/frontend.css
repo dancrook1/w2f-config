@@ -98,6 +98,9 @@
 	
 	/* Transitions */
 	--w2f-pc-transition-fast: 150ms ease;
+	
+	/* Quantity Input */
+	--w2f-pc-quantity-input-width: 80px;
 	--w2f-pc-transition-base: 300ms ease;
 	--w2f-pc-transition-slow: 500ms ease;
 	
@@ -860,8 +863,21 @@
 .w2f-pc-tabs .active a {
 	color: #f5891f;
 	border-bottom-color: #f5891f;
+	border-bottom-width: 4px !important;
 	font-weight: var(--w2f-pc-font-weight-semibold);
 	background: var(--w2f-pc-bg-secondary);
+}
+
+.w2f-pc-tabs .active a::after {
+	content: '';
+	position: absolute;
+	bottom: -2px;
+	left: 10%;
+	right: 10%;
+	height: 3px;
+	background: var(--w2f-pc-color-primary);
+	border-radius: 2px 2px 0 0;
+	box-shadow: 0 2px 4px rgba(245, 137, 31, 0.3);
 }
 
 .w2f-pc-tab-content {
@@ -1532,6 +1548,30 @@
 	}
 }
 
+/* ==========================================================================
+   Order Item Styling - Parent/Child Items
+   ========================================================================== */
+
+.w2f-pc-child-item-indent {
+	display: inline-block;
+	margin-left: 20px;
+	color: #666;
+	font-size: 0.9em;
+}
+
+.w2f-pc-child-item {
+	padding-left: 20px !important;
+}
+
+.w2f-pc-child-item td {
+	padding-left: 40px !important;
+}
+
+.w2f-pc-parent-item {
+	border-bottom: 2px solid #ddd;
+	margin-bottom: 5px;
+}
+
 /* Pagination Styles */
 .w2f-pc-thumbnail-pagination {
 	display: flex;
@@ -1787,8 +1827,125 @@
 	font-weight: var(--w2f-pc-font-weight-semibold);
 }
 
+/* ============================================
+   QUANTITY INPUT
+   ============================================ */
+
+.w2f-pc-component-quantity {
+	margin-top: var(--w2f-pc-spacing-md);
+	padding-top: var(--w2f-pc-spacing-md);
+	border-top: 1px solid var(--w2f-pc-border-color);
+	display: flex;
+	align-items: center;
+	gap: var(--w2f-pc-spacing-sm);
+}
+
+.w2f-pc-component-quantity label {
+	font-size: var(--w2f-pc-font-size-sm);
+	font-weight: var(--w2f-pc-font-weight-medium);
+	color: var(--w2f-pc-text-primary);
+	margin: 0;
+}
+
+.w2f-pc-quantity-input {
+	width: 80px;
+	padding: var(--w2f-pc-spacing-sm) var(--w2f-pc-spacing-md);
+	border: 1px solid var(--w2f-pc-border-color);
+	border-radius: var(--w2f-pc-radius-md);
+	font-size: var(--w2f-pc-font-size-base);
+	font-family: var(--w2f-pc-font-family);
+	color: var(--w2f-pc-text-primary);
+	background-color: var(--w2f-pc-bg-primary);
+	transition: border-color var(--w2f-pc-transition-fast), box-shadow var(--w2f-pc-transition-fast);
+}
+
+.w2f-pc-quantity-input:focus {
+	outline: none;
+	border-color: var(--w2f-pc-color-primary);
+	box-shadow: 0 0 0 3px rgba(245, 137, 31, 0.1);
+}
+
+.w2f-pc-quantity-input:hover {
+	border-color: var(--w2f-pc-border-color-dark);
+}
+
+/* ============================================
+   NONE OPTION
+   ============================================ */
+
+.w2f-pc-none-option {
+	opacity: 0.7;
+}
+
+.w2f-pc-none-option:hover {
+	opacity: 0.9;
+}
+
+.w2f-pc-none-option.selected {
+	opacity: 1;
+}
+
+.w2f-pc-none-placeholder {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--w2f-pc-bg-secondary);
+	border: 2px dashed var(--w2f-pc-border-color);
+	border-radius: var(--w2f-pc-radius-md);
+	color: var(--w2f-pc-text-secondary);
+	font-size: var(--w2f-pc-font-size-sm);
+	font-weight: var(--w2f-pc-font-weight-medium);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.w2f-pc-none-option.selected .w2f-pc-none-placeholder {
+	background-color: var(--w2f-pc-color-primary-light);
+	border-color: var(--w2f-pc-color-primary);
+	color: var(--w2f-pc-color-primary-dark);
+}
+
+.w2f-pc-dropdown-option.w2f-pc-none-option {
+	opacity: 0.7;
+}
+
+.w2f-pc-dropdown-option.w2f-pc-none-option:hover {
+	opacity: 0.9;
+}
+
+.w2f-pc-dropdown-option.w2f-pc-none-option.selected {
+	opacity: 1;
+	background-color: var(--w2f-pc-color-primary-light);
+}
+
 @media (max-width: 480px) {
 	.w2f-pc-thumbnail-grid {
 		grid-template-columns: repeat(2, 1fr);
 	}
+}
+
+/* ==========================================================================
+   Order Item Styling - Parent/Child Items
+   ========================================================================== */
+
+.w2f-pc-child-item-indent {
+	display: inline-block;
+	margin-left: 20px;
+	color: #666;
+	font-size: 0.9em;
+}
+
+.w2f-pc-child-item {
+	padding-left: 20px !important;
+}
+
+.w2f-pc-child-item td {
+	padding-left: 40px !important;
+}
+
+.w2f-pc-parent-item {
+	border-bottom: 2px solid #ddd;
+	margin-bottom: 5px;
 }

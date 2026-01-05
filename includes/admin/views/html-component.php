@@ -19,6 +19,9 @@ $component_display_mode = isset( $component_data['display_mode'] ) ? $component_
 $component_tab = isset( $component_data['tab'] ) ? $component_data['tab'] : '';
 $component_show_search = isset( $component_data['show_search'] ) ? $component_data['show_search'] : 'yes';
 $component_show_dropdown_image = isset( $component_data['show_dropdown_image'] ) ? $component_data['show_dropdown_image'] : 'no';
+$component_enable_quantity = isset( $component_data['enable_quantity'] ) && 'yes' === $component_data['enable_quantity'] ? 'yes' : 'no';
+$component_min_quantity = isset( $component_data['min_quantity'] ) ? intval( $component_data['min_quantity'] ) : 1;
+$component_max_quantity = isset( $component_data['max_quantity'] ) ? intval( $component_data['max_quantity'] ) : 99;
 $default_product_id = isset( $default_configuration[ $component_id ] ) ? $default_configuration[ $component_id ] : 0;
 ?>
 
@@ -88,6 +91,26 @@ $default_product_id = isset( $default_configuration[ $component_id ] ) ? $defaul
 				<?php esc_html_e( 'Show Search Bar', 'w2f-pc-configurator' ); ?>
 			</label>
 			<?php echo wc_help_tip( __( 'Enable search functionality for this component on the frontend. Search bar will only appear if there are more than 5 options.', 'w2f-pc-configurator' ) ); ?>
+		</p>
+
+		<p class="form-field">
+			<label>
+				<input type="checkbox" name="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][enable_quantity]" value="yes" <?php checked( $component_enable_quantity, 'yes' ); ?> class="w2f-pc-enable-quantity-checkbox" data-component-id="<?php echo esc_attr( $component_id ); ?>" />
+				<?php esc_html_e( 'Enable Quantity Selection', 'w2f-pc-configurator' ); ?>
+			</label>
+			<?php echo wc_help_tip( __( 'Allow customers to select multiple quantities of this component (e.g., RAM sticks, fans).', 'w2f-pc-configurator' ) ); ?>
+		</p>
+
+		<p class="form-field w2f-pc-quantity-fields" style="<?php echo 'yes' === $component_enable_quantity ? '' : 'display: none;'; ?>">
+			<label for="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][min_quantity]"><?php esc_html_e( 'Minimum Quantity', 'w2f-pc-configurator' ); ?></label>
+			<input type="number" name="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][min_quantity]" value="<?php echo esc_attr( $component_min_quantity ); ?>" min="1" step="1" class="small-text" />
+			<?php echo wc_help_tip( __( 'Minimum quantity customers can select for this component.', 'w2f-pc-configurator' ) ); ?>
+		</p>
+
+		<p class="form-field w2f-pc-quantity-fields" style="<?php echo 'yes' === $component_enable_quantity ? '' : 'display: none;'; ?>">
+			<label for="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][max_quantity]"><?php esc_html_e( 'Maximum Quantity', 'w2f-pc-configurator' ); ?></label>
+			<input type="number" name="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][max_quantity]" value="<?php echo esc_attr( $component_max_quantity ); ?>" min="1" step="1" class="small-text" />
+			<?php echo wc_help_tip( __( 'Maximum quantity customers can select for this component. Set to prevent excessive quantities.', 'w2f-pc-configurator' ) ); ?>
 		</p>
 
 

@@ -89,6 +89,19 @@
 				}
 			});
 
+			// Toggle quantity fields when enable quantity checkbox is changed.
+			$(document).on('change', '.w2f-pc-enable-quantity-checkbox', function() {
+				var $checkbox = $(this);
+				var $component = $checkbox.closest('.w2f_pc_component');
+				var $quantityFields = $component.find('.w2f-pc-quantity-fields');
+				
+				if ($checkbox.is(':checked')) {
+					$quantityFields.slideDown(200);
+				} else {
+					$quantityFields.slideUp(200);
+				}
+			});
+
 			// Save component order on sort.
 			$(document).on('sortstop', '.w2f_pc_components', function() {
 				self.updateComponentOrder();

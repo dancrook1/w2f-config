@@ -72,6 +72,9 @@ class W2F_PC_Component {
 			'tab'                => '',
 			'show_search'        => 'yes',
 			'show_dropdown_image' => 'yes',
+			'enable_quantity'    => 'no',
+			'min_quantity'       => 1,
+			'max_quantity'       => 99,
 			'options'            => array(),
 			'categories'         => array(),
 		) );
@@ -163,6 +166,33 @@ class W2F_PC_Component {
 		}
 		// For other modes, check the setting (though this shouldn't be used for non-dropdown modes).
 		return isset( $this->data['show_dropdown_image'] ) && 'yes' === $this->data['show_dropdown_image'];
+	}
+
+	/**
+	 * Check if quantity selection is enabled.
+	 *
+	 * @return boolean
+	 */
+	public function enable_quantity() {
+		return isset( $this->data['enable_quantity'] ) && 'yes' === $this->data['enable_quantity'];
+	}
+
+	/**
+	 * Get minimum quantity.
+	 *
+	 * @return int
+	 */
+	public function get_min_quantity() {
+		return isset( $this->data['min_quantity'] ) ? max( 1, intval( $this->data['min_quantity'] ) ) : 1;
+	}
+
+	/**
+	 * Get maximum quantity.
+	 *
+	 * @return int
+	 */
+	public function get_max_quantity() {
+		return isset( $this->data['max_quantity'] ) ? max( 1, intval( $this->data['max_quantity'] ) ) : 99;
 	}
 
 	/**

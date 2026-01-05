@@ -138,6 +138,7 @@ class W2F_PC_Ajax {
 
 		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
 		$configuration = isset( $_POST['configuration'] ) && is_array( $_POST['configuration'] ) ? array_map( 'intval', $_POST['configuration'] ) : array();
+		$quantities = isset( $_POST['quantities'] ) && is_array( $_POST['quantities'] ) ? array_map( 'intval', $_POST['quantities'] ) : array();
 
 		$product = w2f_pc_get_configurator_product( $product_id );
 		if ( ! $product ) {
@@ -145,7 +146,7 @@ class W2F_PC_Ajax {
 		}
 
 		// Explicitly request price including tax for display.
-		$price = $product->calculate_configuration_price( $configuration, true );
+		$price = $product->calculate_configuration_price( $configuration, true, $quantities );
 		$is_default = $product->is_default_configuration( $configuration );
 
 		// Price already includes tax from calculate_configuration_price.

@@ -60,6 +60,19 @@ uasort( $option_products, function( $a, $b ) {
 			<!-- Thumbnail Grid View -->
 			<div class="w2f-pc-thumbnail-wrapper" data-component-id="<?php echo esc_attr( $component_id ); ?>">
 				<div class="w2f-pc-thumbnail-grid">
+					<?php if ( $component->is_optional() ) : ?>
+						<!-- None Option for Optional Components -->
+						<label class="w2f-pc-thumbnail-option w2f-pc-none-option <?php echo ( 0 === $default_product_id ) ? 'selected' : ''; ?>" data-product-id="0" data-product-name="<?php esc_attr_e( 'None', 'w2f-pc-configurator' ); ?>" data-price="0" data-relative-price="0">
+							<input type="radio" name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" value="0" <?php checked( 0, $default_product_id ); ?> class="component-select-radio" data-component-id="<?php echo esc_attr( $component_id ); ?>" />
+							<div class="thumbnail-image">
+								<div class="w2f-pc-none-placeholder"><?php esc_html_e( 'None', 'w2f-pc-configurator' ); ?></div>
+							</div>
+							<div class="thumbnail-info">
+								<span class="thumbnail-name"><?php esc_html_e( 'None', 'w2f-pc-configurator' ); ?></span>
+								<span class="thumbnail-price" data-relative-price="0">—</span>
+							</div>
+						</label>
+					<?php endif; ?>
 					<?php foreach ( $option_products as $option_product_id => $option_product ) : ?>
 						<?php
 						$selected = ( $default_product_id === $option_product_id ) ? 'selected' : '';
@@ -144,6 +157,13 @@ uasort( $option_products, function( $a, $b ) {
 						</svg>
 					</div>
 					<div class="w2f-pc-dropdown-options">
+						<?php if ( $component->is_optional() ) : ?>
+							<!-- None Option for Optional Components -->
+							<div class="w2f-pc-dropdown-option w2f-pc-none-option <?php echo ( 0 === $default_product_id ) ? 'selected' : ''; ?>" data-product-id="0" data-product-name="<?php esc_attr_e( 'None', 'w2f-pc-configurator' ); ?>" data-price="0" data-relative-price="0">
+								<span class="w2f-pc-dropdown-option-text"><?php esc_html_e( 'None', 'w2f-pc-configurator' ); ?></span>
+								<span class="w2f-pc-dropdown-option-price">—</span>
+							</div>
+						<?php endif; ?>
 						<?php foreach ( $option_products as $option_product_id => $option_product ) : ?>
 							<?php
 							$selected = ( $default_product_id === $option_product_id ) ? 'selected' : '';
@@ -172,7 +192,11 @@ uasort( $option_products, function( $a, $b ) {
 			<?php else : ?>
 				<!-- Standard Dropdown -->
 				<select name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" class="component-select" data-component-id="<?php echo esc_attr( $component_id ); ?>">
-					<option value=""><?php esc_html_e( 'Select an option...', 'w2f-pc-configurator' ); ?></option>
+					<?php if ( $component->is_optional() ) : ?>
+						<option value="0" <?php selected( 0, $default_product_id ); ?> data-price="0" data-relative-price="0" data-product-name="<?php esc_attr_e( 'None', 'w2f-pc-configurator' ); ?>"><?php esc_html_e( 'None', 'w2f-pc-configurator' ); ?></option>
+					<?php else : ?>
+						<option value=""><?php esc_html_e( 'Select an option...', 'w2f-pc-configurator' ); ?></option>
+					<?php endif; ?>
 					<?php foreach ( $option_products as $option_product_id => $option_product ) : ?>
 						<?php
 						$selected = ( $default_product_id === $option_product_id ) ? 'selected' : '';
@@ -191,6 +215,27 @@ uasort( $option_products, function( $a, $b ) {
 					<?php endforeach; ?>
 				</select>
 			<?php endif; ?>
+		<?php endif; ?>
+		
+		<?php if ( $component->enable_quantity() ) : ?>
+			<div class="w2f-pc-component-quantity" data-component-id="<?php echo esc_attr( $component_id ); ?>">
+				<label for="w2f_pc_configuration_quantity[<?php echo esc_attr( $component_id ); ?>]">
+					<?php esc_html_e( 'Quantity:', 'w2f-pc-configurator' ); ?>
+				</label>
+				<input 
+					type="number" 
+					name="w2f_pc_configuration_quantity[<?php echo esc_attr( $component_id ); ?>]" 
+					id="w2f_pc_configuration_quantity[<?php echo esc_attr( $component_id ); ?>]"
+					class="w2f-pc-quantity-input" 
+					value="<?php echo esc_attr( $component->get_min_quantity() ); ?>" 
+					min="<?php echo esc_attr( $component->get_min_quantity() ); ?>" 
+					max="<?php echo esc_attr( $component->get_max_quantity() ); ?>" 
+					step="1"
+					data-component-id="<?php echo esc_attr( $component_id ); ?>"
+					data-min-quantity="<?php echo esc_attr( $component->get_min_quantity() ); ?>"
+					data-max-quantity="<?php echo esc_attr( $component->get_max_quantity() ); ?>"
+				/>
+			</div>
 		<?php endif; ?>
 	</div>
 </div>

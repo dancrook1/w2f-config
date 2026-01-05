@@ -367,7 +367,7 @@ class W2F_PC_Product extends WC_Product {
 	 * @param  bool  $include_tax Whether to include tax in the price (default: true for display).
 	 * @return float
 	 */
-	public function calculate_configuration_price( $configuration, $include_tax = true ) {
+	public function calculate_configuration_price( $configuration, $include_tax = true, $quantities = array() ) {
 		// If matches default, return default price.
 		if ( $this->is_default_configuration( $configuration ) ) {
 			$default_price = $this->get_default_price(); // This is stored excluding tax.
@@ -383,6 +383,7 @@ class W2F_PC_Product extends WC_Product {
 
 		// Otherwise, sum component prices.
 		$total = 0;
+		$components = $this->get_components();
 		foreach ( $configuration as $component_id => $product_id ) {
 			$product = wc_get_product( $product_id );
 			if ( $product ) {
@@ -393,7 +394,14 @@ class W2F_PC_Product extends WC_Product {
 					// Get price excluding tax for cart calculation.
 					$price = wc_get_price_excluding_tax( $product );
 				}
-				$total += (float) $price;
+				
+				// Multiply by quantity if quantity is enabled for this component.
+				$quantity = 1;
+				if ( isset( $components[ $component_id ] ) && $components[ $component_id ]->enable_quantity() ) {
+					$quantity = isset( $quantities[ $component_id ] ) ? max( 1, intval( $quantities[ $component_id ] ) ) : 1;
+				}
+				
+				$total += (float) $price * $quantity;
 			}
 		}
 		return $total;
