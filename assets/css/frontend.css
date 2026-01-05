@@ -450,6 +450,7 @@
 	cursor: pointer;
 	transition: all var(--w2f-pc-transition-base);
 	min-height: 48px;
+	position: relative;
 }
 
 .w2f-pc-dropdown-selected:hover {
@@ -469,25 +470,74 @@
 	flex-shrink: 0;
 }
 
+.w2f-pc-dropdown-text-wrapper {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--w2f-pc-spacing-xs);
+	min-width: 0;
+	max-width: calc(100% - 60px);
+	overflow: hidden;
+}
+
 .w2f-pc-dropdown-text,
 .elementor-widget .w2f-pc-dropdown-text,
 .elementor-element .w2f-pc-dropdown-text {
-	flex: 1 !important;
+	flex: 0 0 auto !important;
 	font-size: var(--w2f-pc-font-size-base) !important;
 	font-weight: var(--w2f-pc-font-weight-normal) !important;
 	font-family: var(--w2f-pc-font-family) !important;
 	color: var(--w2f-pc-text-primary) !important;
 	text-align: left !important;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .w2f-pc-dropdown-arrow {
 	flex-shrink: 0;
 	color: var(--w2f-pc-text-secondary);
 	transition: transform var(--w2f-pc-transition-base);
+	margin-left: auto;
 }
 
 .w2f-pc-dropdown-selected.active .w2f-pc-dropdown-arrow {
 	transform: rotate(180deg);
+}
+
+.w2f-pc-dropdown-quick-view {
+	background: none;
+	border: none;
+	padding: var(--w2f-pc-spacing-xs);
+	cursor: pointer;
+	opacity: 0.7;
+	transition: all var(--w2f-pc-transition-base);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	color: var(--w2f-pc-text-secondary);
+	flex-shrink: 0;
+	z-index: 1;
+}
+
+.w2f-pc-dropdown-quick-view:hover {
+	opacity: 1;
+	color: #f5891f;
+	transform: scale(1.1);
+}
+
+.w2f-pc-dropdown-quick-view svg {
+	width: 16px;
+	height: 16px;
+}
+
+.w2f-pc-dropdown-arrow {
+	flex-shrink: 0;
+	color: var(--w2f-pc-text-secondary);
+	transition: transform var(--w2f-pc-transition-base);
+	z-index: 1;
 }
 
 .w2f-pc-dropdown-options {
@@ -1187,7 +1237,6 @@
    ============================================ */
 
 .w2f-pc-quick-view {
-	position: absolute;
 	bottom: var(--w2f-pc-spacing-sm);
 	right: var(--w2f-pc-spacing-sm);
 	background: rgba(255, 255, 255, 0.95);

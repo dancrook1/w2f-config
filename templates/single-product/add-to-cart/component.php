@@ -98,7 +98,9 @@ uasort( $option_products, function( $a, $b ) {
 								<?php endif; ?>
 								<button type="button" class="w2f-pc-quick-view" data-product-id="<?php echo esc_attr( $option_product_id ); ?>" aria-label="<?php esc_attr_e( 'View product details', 'w2f-pc-configurator' ); ?>">
 									<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<path d="M8 3C4.5 3 1.73 5.61 0 9c1.73 3.39 4.5 6 8 6s6.27-2.61 8-6c-1.73-3.39-4.5-6-8-6zM8 11.5c-1.38 0-2.5-1.12-2.5-2.5S6.62 6.5 8 6.5s2.5 1.12 2.5 2.5S9.38 11.5 8 11.5z" fill="currentColor"/>
+										<circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/>
+										<circle cx="8" cy="5.5" r="1" fill="currentColor"/>
+										<path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 									</svg>
 								</button>
 							</div>
@@ -148,7 +150,16 @@ uasort( $option_products, function( $a, $b ) {
 							$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) : wc_placeholder_img_src( 'woocommerce_thumbnail' );
 							?>
 							<img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $selected_product->get_name() ); ?>" class="w2f-pc-dropdown-image" />
-							<span class="w2f-pc-dropdown-text"><?php echo esc_html( $selected_product->get_name() ); ?></span>
+							<span class="w2f-pc-dropdown-text-wrapper">
+								<span class="w2f-pc-dropdown-text"><?php echo esc_html( $selected_product->get_name() ); ?></span>
+								<button type="button" class="w2f-pc-quick-view w2f-pc-dropdown-quick-view" data-product-id="<?php echo esc_attr( $default_product_id ); ?>" aria-label="<?php esc_attr_e( 'View product details', 'w2f-pc-configurator' ); ?>">
+									<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/>
+										<circle cx="8" cy="5.5" r="1" fill="currentColor"/>
+										<path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+									</svg>
+								</button>
+							</span>
 						<?php else : ?>
 							<span class="w2f-pc-dropdown-text"><?php esc_html_e( 'Select an option...', 'w2f-pc-configurator' ); ?></span>
 						<?php endif; ?>

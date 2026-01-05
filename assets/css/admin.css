@@ -385,6 +385,39 @@
 }
 
 /* ============================================
+   IMPORT/EXPORT
+   ============================================ */
+
+#w2f-pc-export-config,
+#w2f-pc-import-config {
+	margin-right: var(--w2f-pc-admin-spacing-sm);
+}
+
+#w2f-pc-import-file {
+	display: none;
+}
+
+#w2f-pc-import-message {
+	margin-top: var(--w2f-pc-admin-spacing-md);
+	padding: var(--w2f-pc-admin-spacing-md);
+	border-radius: var(--w2f-pc-admin-radius-sm);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+#w2f-pc-import-message.success {
+	background: #d4edda;
+	border-left: 4px solid var(--w2f-pc-admin-color-success);
+	color: #155724;
+}
+
+#w2f-pc-import-message.error {
+	background: #f8d7da;
+	border-left: 4px solid var(--w2f-pc-admin-color-error);
+	color: #721c24;
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 
@@ -407,5 +440,12 @@
 	.w2f-pc-add-tab {
 		width: 100%;
 		justify-content: center;
+	}
+
+	#w2f-pc-export-config,
+	#w2f-pc-import-config {
+		width: 100%;
+		margin-right: 0;
+		margin-bottom: var(--w2f-pc-admin-spacing-sm);
 	}
 }

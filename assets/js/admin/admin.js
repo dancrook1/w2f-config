@@ -10,16 +10,49 @@
 
 	var W2FPCAdmin = {
 		componentCounter: 0,
+		priceUpdateTimeout: null,
 
 		init: function() {
 			this.bindEvents();
 			this.initProductSearch();
 			this.updateTabSelects();
 			this.initSortable();
+			this.updatePriceBreakdown();
+			// Ensure all existing components are collapsed on page load.
+			this.collapseAllComponents();
 		},
 
 		bindEvents: function() {
 			var self = this;
+
+			// Export configuration button.
+			$(document).on('click', '#w2f-pc-export-config', function(e) {
+				e.preventDefault();
+				self.exportConfiguration();
+			});
+
+			// Import configuration button.
+			$(document).on('click', '#w2f-pc-import-config', function(e) {
+				e.preventDefault();
+				$('#w2f-pc-import-file').click();
+			});
+
+			// Handle file selection for import.
+			$(document).on('change', '#w2f-pc-import-file', function(e) {
+				var file = e.target.files[0];
+				if (file) {
+					var reader = new FileReader();
+					reader.onload = function(e) {
+						try {
+							var importData = JSON.parse(e.target.result);
+							self.importConfiguration(importData);
+						} catch (error) {
+							self.showImportMessage(__('Invalid JSON file. Please select a valid configuration file.', 'w2f-pc-configurator'), 'error');
+						}
+					};
+					reader.readAsText(file);
+				}
+			});
 
 			// Add component button.
 			$(document).on('click', '.add_component', function(e) {
@@ -159,9 +192,9 @@
 			var $newComponent = $(template);
 			$('.w2f_pc_components').append($newComponent);
 			
-			// Expand the new component by default.
-			$newComponent.find('.w2f-pc-component-content').show();
-			$newComponent.find('.w2f-pc-component-toggle').attr('aria-expanded', 'true');
+			// Keep new component collapsed by default.
+			$newComponent.find('.w2f-pc-component-content').hide();
+			$newComponent.find('.w2f-pc-component-toggle').attr('aria-expanded', 'false').addClass('collapsed');
 			
 			this.initProductSearch();
 			this.updateTabSelects();
@@ -424,6 +457,210 @@
 					$orderIndicator.text((index + 1) + '.');
 				}
 			});
+		},
+
+		updatePriceBreakdown: function() {
+			var self = this;
+			var $breakdown = $('.w2f-pc-admin-price-breakdown');
+			
+			if (!$breakdown.length) {
+				return;
+			}
+
+			// Collect all default product IDs.
+			var defaultProducts = [];
+			$('.default-product-search').each(function() {
+				var $select = $(this);
+				var productId = $select.val();
+				if (productId && productId !== '0' && productId !== '') {
+					defaultProducts.push(parseInt(productId));
+				}
+			});
+
+			// Get default price.
+			var defaultPrice = parseFloat($('#w2f_pc_default_price').val()) || 0;
+
+			// If no default products selected, show zero.
+			if (defaultProducts.length === 0) {
+				$breakdown.find('.w2f-pc-admin-component-total').text('£0.00');
+				$breakdown.find('.w2f-pc-admin-target-price').text('£0.00');
+				$breakdown.find('.w2f-pc-admin-discount-row').hide();
+				return;
+			}
+
+			// Calculate component total via AJAX.
+			$.ajax({
+				url: w2f_pc_admin_params.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'w2f_pc_admin_calculate_component_total',
+					nonce: w2f_pc_admin_params.nonce,
+					products: defaultProducts
+				},
+				success: function(response) {
+					if (response.success) {
+						var componentTotal = parseFloat(response.data.component_total) || 0;
+						var discountPercentage = 0;
+						var discountAmount = 0;
+
+						// Calculate discount if default price is set and less than component total.
+						if (defaultPrice > 0 && componentTotal > 0 && defaultPrice < componentTotal) {
+							discountAmount = componentTotal - defaultPrice;
+							discountPercentage = (discountAmount / componentTotal) * 100;
+						}
+
+						// Update component total.
+						$breakdown.find('.w2f-pc-admin-component-total').text(self.formatPrice(componentTotal));
+
+						// Update target price.
+						$breakdown.find('.w2f-pc-admin-target-price').text(self.formatPrice(defaultPrice));
+
+						// Update discount.
+						var $discountRow = $breakdown.find('.w2f-pc-admin-discount-row');
+						var $discountPercentage = $breakdown.find('.w2f-pc-admin-discount-percentage');
+						
+						if (discountPercentage > 0) {
+							$discountPercentage.text(discountPercentage.toFixed(2) + '%');
+							// Update discount amount text.
+							var $discountAmount = $discountRow.find('small');
+							if ($discountAmount.length) {
+								$discountAmount.text('(' + self.formatPrice(discountAmount) + ' discount applied)');
+							}
+							$discountRow.show();
+						} else {
+							$discountRow.hide();
+						}
+					}
+				},
+				error: function() {
+					// Silently fail - price breakdown will show initial values.
+				}
+			});
+		},
+
+		formatPrice: function(price) {
+			if (typeof price !== 'number' || isNaN(price)) {
+				return '£0.00';
+			}
+			return '£' + price.toFixed(2);
+		},
+
+		collapseAllComponents: function() {
+			// Collapse all component accordions on page load.
+			$('.w2f_pc_component').each(function() {
+				var $component = $(this);
+				var $content = $component.find('.w2f-pc-component-content');
+				var $header = $component.find('.w2f-pc-component-toggle');
+				
+				// Only collapse if not already collapsed.
+				if ($header.attr('aria-expanded') === 'true') {
+					$content.hide();
+					$header.attr('aria-expanded', 'false').addClass('collapsed');
+				}
+			});
+		},
+
+		exportConfiguration: function() {
+			var self = this;
+			var productId = w2f_pc_admin_params.product_id;
+
+			$.ajax({
+				url: w2f_pc_admin_params.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'w2f_pc_export_config',
+					nonce: w2f_pc_admin_params.nonce,
+					product_id: productId
+				},
+				success: function(response) {
+					if (response.success && response.data) {
+						// Create a blob and download the file.
+						var dataStr = JSON.stringify(response.data, null, 2);
+						var dataBlob = new Blob([dataStr], {type: 'application/json'});
+						var url = URL.createObjectURL(dataBlob);
+						var link = document.createElement('a');
+						link.href = url;
+						link.download = 'pc-configurator-' + productId + '-' + new Date().getTime() + '.json';
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+						URL.revokeObjectURL(url);
+						
+						self.showImportMessage('Configuration exported successfully!', 'success');
+					} else {
+						self.showImportMessage(response.data && response.data.message ? response.data.message : 'Export failed.', 'error');
+					}
+				},
+				error: function() {
+					self.showImportMessage('Export failed. Please try again.', 'error');
+				}
+			});
+		},
+
+		importConfiguration: function(importData) {
+			var self = this;
+			var productId = w2f_pc_admin_params.product_id;
+
+			// Validate import data structure.
+			if (!importData.components || !importData.default_configuration || !importData.tabs) {
+				self.showImportMessage('Invalid configuration format.', 'error');
+				return;
+			}
+
+			// Confirm import (will overwrite existing configuration).
+			if (!confirm('This will replace your current configuration. Are you sure you want to continue?')) {
+				$('#w2f-pc-import-file').val('');
+				return;
+			}
+
+			$.ajax({
+				url: w2f_pc_admin_params.ajax_url,
+				type: 'POST',
+				data: {
+					action: 'w2f_pc_import_config',
+					nonce: w2f_pc_admin_params.nonce,
+					product_id: productId,
+					import_data: JSON.stringify(importData)
+				},
+				success: function(response) {
+					if (response.success) {
+						self.showImportMessage(
+							'Configuration imported successfully! Please refresh the page to see the changes.',
+							'success'
+						);
+						// Clear file input.
+						$('#w2f-pc-import-file').val('');
+						// Optionally reload the page after a short delay.
+						setTimeout(function() {
+							window.location.reload();
+						}, 2000);
+					} else {
+						self.showImportMessage(
+							response.data && response.data.message ? response.data.message : 'Import failed.',
+							'error'
+						);
+						$('#w2f-pc-import-file').val('');
+					}
+				},
+				error: function() {
+					self.showImportMessage('Import failed. Please try again.', 'error');
+					$('#w2f-pc-import-file').val('');
+				}
+			});
+		},
+
+		showImportMessage: function(message, type) {
+			var $message = $('#w2f-pc-import-message');
+			$message.removeClass('error success').addClass(type);
+			$message.html(message);
+			$message.fadeIn();
+			
+			// Auto-hide success messages after 5 seconds.
+			if (type === 'success') {
+				setTimeout(function() {
+					$message.fadeOut();
+				}, 5000);
+			}
 		}
 	};
 

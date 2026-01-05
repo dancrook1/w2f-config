@@ -68,6 +68,19 @@ class W2F_PC_Meta_Box_Product_Data {
 		$default_configuration = $product_object->get_default_configuration();
 		$default_price = $product_object->get_default_price();
 		$tabs = $product_object->get_tabs();
+		
+		// Calculate component total (sum of all default component prices excluding tax).
+		$component_total = 0;
+		if ( ! empty( $default_configuration ) ) {
+			$component_total = $product_object->calculate_configuration_price( $default_configuration, false );
+		}
+		
+		// Calculate discount percentage if default price is set and less than component total.
+		$discount_percentage = 0;
+		if ( $default_price > 0 && $component_total > 0 && $default_price < $component_total ) {
+			$discount_amount = $component_total - $default_price;
+			$discount_percentage = ( $discount_amount / $component_total ) * 100;
+		}
 
 		include W2F_PC()->plugin_path() . '/includes/admin/views/html-configurator-data.php';
 	}

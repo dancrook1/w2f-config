@@ -103,9 +103,10 @@ class W2F_PC_Admin {
 					wp_enqueue_style( 'w2f-pc-admin', W2F_PC()->plugin_url() . '/assets/css/admin.css', array(), W2F_PC()->plugin_version() );
 
 					wp_localize_script( 'w2f-pc-admin', 'w2f_pc_admin_params', array(
-						'ajax_url' => admin_url( 'admin-ajax.php' ),
-						'nonce'    => wp_create_nonce( 'w2f-pc-admin' ),
-						'i18n'     => array(
+						'ajax_url'  => admin_url( 'admin-ajax.php' ),
+						'nonce'     => wp_create_nonce( 'w2f-pc-admin' ),
+						'product_id' => $post->ID,
+						'i18n'      => array(
 							'tab_name' => __( 'Tab name', 'w2f-pc-configurator' ),
 							'remove'   => __( 'Remove', 'w2f-pc-configurator' ),
 							'no_tab'   => __( 'No Tab', 'w2f-pc-configurator' ),

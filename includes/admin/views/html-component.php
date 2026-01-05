@@ -29,7 +29,7 @@ $default_product_id = isset( $default_configuration[ $component_id ] ) ? $defaul
 	<!-- Hidden input to ensure component ID is always submitted -->
 	<input type="hidden" name="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][_component_id]" value="<?php echo esc_attr( $component_id ); ?>" />
 	
-	<div class="component_header w2f-pc-component-toggle" role="button" tabindex="0" aria-expanded="true">
+	<div class="component_header w2f-pc-component-toggle collapsed" role="button" tabindex="0" aria-expanded="false">
 		<h4>
 			<span class="component_drag_handle" title="<?php esc_attr_e( 'Drag to reorder', 'w2f-pc-configurator' ); ?>">☰</span>
 			<svg class="w2f-pc-accordion-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -40,7 +40,7 @@ $default_product_id = isset( $default_configuration[ $component_id ] ) ? $defaul
 		</h4>
 	</div>
 
-	<div class="component_data w2f-pc-component-content">
+	<div class="component_data w2f-pc-component-content" style="display: none;">
 		<p class="form-field">
 			<label for="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][title]"><?php esc_html_e( 'Component Title', 'w2f-pc-configurator' ); ?></label>
 			<input type="text" name="w2f_pc_components[<?php echo esc_attr( $component_id ); ?>][title]" value="<?php echo esc_attr( $component_title ); ?>" class="component_title" />

@@ -63,6 +63,8 @@ class W2F_PC_Ajax {
 		add_action( 'wp_ajax_w2f_pc_search_component_products', array( $this, 'search_component_products' ) );
 
 		add_action( 'wp_ajax_w2f_pc_get_product_tooltip', array( $this, 'get_product_tooltip' ) );
+		
+		add_action( 'wp_ajax_w2f_pc_admin_calculate_component_total', array( $this, 'admin_calculate_component_total' ) );
 		add_action( 'wp_ajax_nopriv_w2f_pc_get_product_tooltip', array( $this, 'get_product_tooltip' ) );
 
 		add_action( 'wp_ajax_w2f_pc_get_product_description', array( $this, 'get_product_description' ) );
@@ -76,6 +78,10 @@ class W2F_PC_Ajax {
 
 		// Admin AJAX handlers.
 		add_action( 'wp_ajax_w2f_pc_preview_rule', array( $this, 'preview_rule' ) );
+		
+		// Import/Export handlers.
+		add_action( 'wp_ajax_w2f_pc_export_config', array( $this, 'export_config' ) );
+		add_action( 'wp_ajax_w2f_pc_import_config', array( $this, 'import_config' ) );
 	}
 
 	/**
@@ -302,6 +308,33 @@ class W2F_PC_Ajax {
 		$html = ob_get_clean();
 
 		wp_send_json_success( array( 'html' => $html ) );
+	}
+
+	/**
+	 * Calculate component total for admin price breakdown.
+	 */
+	public function admin_calculate_component_total() {
+		check_ajax_referer( 'w2f-pc-admin', 'nonce' );
+
+		$products = isset( $_POST['products'] ) && is_array( $_POST['products'] ) ? array_map( 'intval', $_POST['products'] ) : array();
+
+		if ( empty( $products ) ) {
+			wp_send_json_success( array( 'component_total' => 0 ) );
+		}
+
+		$component_total = 0;
+		foreach ( $products as $product_id ) {
+			if ( $product_id > 0 ) {
+				$product = wc_get_product( $product_id );
+				if ( $product ) {
+					// Get price excluding tax (for admin calculation).
+					$price = wc_get_price_excluding_tax( $product );
+					$component_total += (float) $price;
+				}
+			}
+		}
+
+		wp_send_json_success( array( 'component_total' => $component_total ) );
 	}
 
 	/**
@@ -636,6 +669,109 @@ class W2F_PC_Ajax {
 		$preview_results['total_impact'] = count( $preview_results['affected_configurators'] );
 
 		wp_send_json_success( $preview_results );
+	}
+
+	/**
+	 * Export configuration.
+	 */
+	public function export_config() {
+		check_ajax_referer( 'w2f-pc-admin', 'nonce' );
+
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_send_json_error( array( 'message' => __( 'You do not have permission to export configurations.', 'w2f-pc-configurator' ) ) );
+		}
+
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		if ( ! $product_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid product ID.', 'w2f-pc-configurator' ) ) );
+		}
+
+		$product = w2f_pc_get_configurator_product( $product_id );
+		if ( ! $product ) {
+			wp_send_json_error( array( 'message' => __( 'Product not found.', 'w2f-pc-configurator' ) ) );
+		}
+
+		// Get all configuration data.
+		$export_data = array(
+			'version' => '1.0',
+			'export_date' => current_time( 'mysql' ),
+			'product_id' => $product_id,
+			'product_name' => $product->get_name(),
+			'components' => $product->get_components_data(),
+			'default_configuration' => $product->get_default_configuration(),
+			'default_price' => $product->get_default_price(),
+			'tabs' => $product->get_tabs(),
+		);
+
+		// Return JSON data.
+		wp_send_json_success( $export_data );
+	}
+
+	/**
+	 * Import configuration.
+	 */
+	public function import_config() {
+		check_ajax_referer( 'w2f-pc-admin', 'nonce' );
+
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_send_json_error( array( 'message' => __( 'You do not have permission to import configurations.', 'w2f-pc-configurator' ) ) );
+		}
+
+		$product_id = isset( $_POST['product_id'] ) ? intval( $_POST['product_id'] ) : 0;
+		if ( ! $product_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid product ID.', 'w2f-pc-configurator' ) ) );
+		}
+
+		$product = w2f_pc_get_configurator_product( $product_id );
+		if ( ! $product ) {
+			wp_send_json_error( array( 'message' => __( 'Product not found.', 'w2f-pc-configurator' ) ) );
+		}
+
+		// Get import data.
+		$import_data = isset( $_POST['import_data'] ) ? wp_unslash( $_POST['import_data'] ) : '';
+		if ( empty( $import_data ) ) {
+			wp_send_json_error( array( 'message' => __( 'No import data provided.', 'w2f-pc-configurator' ) ) );
+		}
+
+		// Decode JSON.
+		$data = json_decode( $import_data, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid JSON data.', 'w2f-pc-configurator' ) ) );
+		}
+
+		// Validate data structure.
+		if ( ! isset( $data['components'] ) || ! isset( $data['default_configuration'] ) || ! isset( $data['tabs'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid configuration format.', 'w2f-pc-configurator' ) ) );
+		}
+
+		// Import components.
+		if ( is_array( $data['components'] ) ) {
+			$product->set_components_data( $data['components'] );
+		}
+
+		// Import default configuration.
+		if ( is_array( $data['default_configuration'] ) ) {
+			$product->set_default_configuration( $data['default_configuration'] );
+		}
+
+		// Import default price.
+		if ( isset( $data['default_price'] ) ) {
+			$product->set_default_price( floatval( $data['default_price'] ) );
+		}
+
+		// Import tabs.
+		if ( is_array( $data['tabs'] ) ) {
+			$product->set_tabs( $data['tabs'] );
+		}
+
+		// Save the product.
+		$product->save();
+
+		wp_send_json_success( array(
+			'message' => __( 'Configuration imported successfully. Please refresh the page to see the changes.', 'w2f-pc-configurator' ),
+			'components_count' => count( $data['components'] ),
+			'tabs_count' => count( $data['tabs'] ),
+		) );
 	}
 }
 
