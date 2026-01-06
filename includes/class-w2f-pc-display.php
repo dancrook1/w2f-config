@@ -70,9 +70,37 @@ class W2F_PC_Display {
 			return $price_html;
 		}
 
-		// Use the product's get_price_html method which handles tax correctly.
-		$configurator_product = w2f_pc_get_configurator_product( $product );
-		return $configurator_product->get_price_html( $price_html );
+		// Prevent infinite recursion with static flag.
+		static $processing_price_html = false;
+		if ( $processing_price_html ) {
+			return $price_html;
+		}
+		
+		$processing_price_html = true;
+		
+		try {
+			// Get configurator product instance.
+			$configurator_product = w2f_pc_get_configurator_product( $product );
+			
+			// Calculate price directly from default configuration to avoid recursion.
+			$default_configuration = $configurator_product->get_default_configuration();
+			
+			if ( empty( $default_configuration ) ) {
+				return apply_filters( 'woocommerce_empty_price_html', '', $product );
+			}
+			
+			// Calculate price including tax for display.
+			$calculated_price = $configurator_product->calculate_configuration_price( $default_configuration, true );
+			
+			if ( $calculated_price <= 0 ) {
+				return apply_filters( 'woocommerce_empty_price_html', '', $product );
+			}
+			
+			// Format and return the price.
+			return wc_price( $calculated_price );
+		} finally {
+			$processing_price_html = false;
+		}
 	}
 
 	/**

@@ -129,17 +129,43 @@ class W2F_PC_Product extends WC_Product {
 
 	/**
 	 * Get price.
-	 * Returns the stored price if set (from cart calculation), otherwise 0.
+	 * Returns the stored price if set (from cart calculation), otherwise calculates from default configuration.
 	 *
 	 * @param  string $context
 	 * @return float
 	 */
 	public function get_price( $context = 'view' ) {
-		// Get the stored price (set by cart calculation).
-		$price = parent::get_price( $context );
+		// Prevent recursion - if we're already calculating price, return stored price only.
+		static $calculating_price = false;
+		if ( $calculating_price ) {
+			return parent::get_price( $context );
+		}
 		
-		// If price is set (from cart), return it. Otherwise return 0.
-		return $price > 0 ? $price : 0;
+		$calculating_price = true;
+		
+		try {
+			// Get the stored price (set by cart calculation).
+			$price = parent::get_price( $context );
+			
+			// If price is set (from cart), return it.
+			if ( $price > 0 ) {
+				return $price;
+			}
+			
+			// Calculate price from default configuration for display.
+			$default_configuration = $this->get_default_configuration();
+			if ( ! empty( $default_configuration ) ) {
+				// Calculate price including tax for display.
+				$calculated_price = $this->calculate_configuration_price( $default_configuration, true );
+				if ( $calculated_price > 0 ) {
+					return $calculated_price;
+				}
+			}
+			
+			return 0;
+		} finally {
+			$calculating_price = false;
+		}
 	}
 
 	/**
@@ -507,14 +533,45 @@ class W2F_PC_Product extends WC_Product {
 
 	/**
 	 * Get price HTML.
-	 * Price is calculated from components, so return empty or calculated price.
+	 * Price is calculated from components based on default configuration.
 	 *
 	 * @param  string $price
 	 * @return string
 	 */
 	public function get_price_html( $price = '' ) {
-		// Price is calculated dynamically from components.
-		return '';
+		// Prevent recursion - if we're already calculating, return empty.
+		static $calculating_price_html = false;
+		if ( $calculating_price_html ) {
+			return '';
+		}
+		
+		$calculating_price_html = true;
+		
+		try {
+			// Calculate price from default configuration.
+			$default_configuration = $this->get_default_configuration();
+			
+			if ( empty( $default_configuration ) ) {
+				// If no default configuration, return empty or "From" price.
+				return apply_filters( 'woocommerce_empty_price_html', '', $this );
+			}
+			
+			// Calculate price including tax for display.
+			$calculated_price = $this->calculate_configuration_price( $default_configuration, true );
+			
+			if ( $calculated_price <= 0 ) {
+				return apply_filters( 'woocommerce_empty_price_html', '', $this );
+			}
+			
+			// Format and return the price.
+			// Don't apply woocommerce_get_price_html filter here to avoid infinite loop
+			// (it's already being filtered by filter_price_html in class-w2f-pc-display.php).
+			$price_html = wc_price( $calculated_price );
+			
+			return $price_html;
+		} finally {
+			$calculating_price_html = false;
+		}
 	}
 }
 

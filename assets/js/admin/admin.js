@@ -64,6 +64,7 @@
 			$(document).on('click', '.remove_component', function(e) {
 				e.preventDefault();
 				$(this).closest('.w2f_pc_component').remove();
+				self.updateDefaultConfigurationSection();
 			});
 
 			// Add tab button.
@@ -198,6 +199,7 @@
 			
 			this.initProductSearch();
 			this.updateTabSelects();
+			this.updateDefaultConfigurationSection();
 		},
 
 		addTab: function() {
@@ -661,6 +663,12 @@
 					$message.fadeOut();
 				}, 5000);
 			}
+		},
+
+		updateDefaultConfigurationSection: function() {
+			// This function will be called to update the default configuration section
+			// when components are added or removed. For now, just re-initialize product search.
+			this.initProductSearch();
 		}
 	};
 

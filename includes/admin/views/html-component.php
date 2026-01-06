@@ -150,6 +150,41 @@ $component_max_quantity = isset( $component_data['max_quantity'] ) ? intval( $co
 			<?php echo wc_help_tip( __( 'Select product categories. All products in selected categories will be available for this component.', 'w2f-pc-configurator' ) ); ?>
 		</p>
 
+		<?php
+		// Get default configuration for this component.
+		global $post, $product_object;
+		if ( ! isset( $product_object ) || ! is_a( $product_object, 'W2F_PC_Product' ) ) {
+			$thepostid = $post->ID;
+			$product_object = wc_get_product( $thepostid );
+		}
+		$default_configuration = array();
+		if ( is_a( $product_object, 'W2F_PC_Product' ) ) {
+			$default_configuration = $product_object->get_default_configuration();
+		}
+		$default_product_id = isset( $default_configuration[ $component_id ] ) ? intval( $default_configuration[ $component_id ] ) : 0;
+		?>
+
+		<p class="form-field">
+			<label for="w2f_pc_default_configuration_<?php echo esc_attr( $component_id ); ?>"><?php esc_html_e( 'Default Product', 'w2f-pc-configurator' ); ?></label>
+			<select 
+				id="w2f_pc_default_configuration_<?php echo esc_attr( $component_id ); ?>"
+				name="w2f_pc_default_configuration[<?php echo esc_attr( $component_id ); ?>]"
+				class="wc-product-search default-product-search"
+				style="width: 100%;"
+				data-placeholder="<?php esc_attr_e( 'Select default product...', 'w2f-pc-configurator' ); ?>"
+			>
+				<?php
+				if ( $default_product_id > 0 ) {
+					$product = wc_get_product( $default_product_id );
+					if ( $product ) {
+						echo '<option value="' . esc_attr( $default_product_id ) . '" selected="selected">' . esc_html( $product->get_formatted_name() ) . '</option>';
+					}
+				}
+				?>
+			</select>
+			<?php echo wc_help_tip( __( 'Select the default product for this component. This will be pre-selected when customers first open the configurator.', 'w2f-pc-configurator' ) ); ?>
+		</p>
+
 	</div>
 </div>
 
