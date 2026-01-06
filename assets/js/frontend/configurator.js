@@ -598,6 +598,15 @@
 					return false;
 				}
 				
+				// Validate configuration (including warranty).
+				var validationErrors = self.validateConfiguration();
+				if (validationErrors.length > 0) {
+					e.preventDefault();
+					var errorMessages = validationErrors.map(function(e) { return e.message; }).join('\n');
+					alert(errorMessages);
+					return false;
+				}
+				
 				self.addConfigurationToForm();
 			});
 
@@ -1497,6 +1506,7 @@
 			var self = this;
 			var $component = $('.w2f-pc-component[data-component-id="' + componentId + '"]');
 			var selectedProductId = this.currentConfiguration[componentId];
+			var isWarranty = componentId === 'warranty';
 			
 			// Get the currently selected product's price (absolute price, already discounted if applicable).
 			var selectedProductPrice = 0;
@@ -1518,16 +1528,38 @@
 				var optionPrice = parseFloat($option.attr('data-price')) || 0;
 				var relativePrice = optionPrice - selectedProductPrice;
 				var $priceSpan = $option.find('.thumbnail-price');
+				var isSelected = $option.hasClass('selected');
+				var productName = $option.attr('data-product-name') || '';
+				var isElite = productName.toLowerCase().indexOf('elite') !== -1;
 				
 				var priceHtml = '';
-				if (Math.abs(relativePrice) < 0.01) {
-					// Price difference is essentially zero (within rounding).
-					priceHtml = '—';
-				} else if (relativePrice > 0) {
-					priceHtml = '+' + self.formatPrice(relativePrice);
+				
+				// For warranty components, always show absolute price.
+				if (isWarranty) {
+					// For Elite warranty, show discount pricing.
+					if (isElite) {
+						// Get the regular price from the option's data attribute or use the current price.
+						var regularPriceExTax = parseFloat($option.attr('data-regular-price')) || optionPrice;
+						// Add tax (assuming 20% VAT for UK - this should match WooCommerce tax calculation).
+						var regularPriceWithTax = regularPriceExTax * 1.2;
+						priceHtml = '<span class="w2f-pc-price-wrapper">' +
+							'<del class="w2f-pc-regular-price">' + self.formatPrice(regularPriceWithTax) + '</del>' +
+							'<ins class="w2f-pc-sale-price">' + self.formatPrice(0) + '</ins>' +
+							'</span>';
+					} else {
+						priceHtml = self.formatPrice(optionPrice);
+					}
 				} else {
-					// For negative prices, ensure the minus sign is displayed.
-					priceHtml = '-' + self.formatPrice(Math.abs(relativePrice));
+					// For other components, show relative price.
+					if (Math.abs(relativePrice) < 0.01) {
+						// Price difference is essentially zero (within rounding).
+						priceHtml = '—';
+					} else if (relativePrice > 0) {
+						priceHtml = '+' + self.formatPrice(relativePrice);
+					} else {
+						// For negative prices, ensure the minus sign is displayed.
+						priceHtml = '-' + self.formatPrice(Math.abs(relativePrice));
+					}
 				}
 				
 				$priceSpan.html(priceHtml);
@@ -1541,14 +1573,21 @@
 				var $priceSpan = $option.find('.w2f-pc-dropdown-option-price');
 				
 				var priceHtml = '';
-				if (Math.abs(relativePrice) < 0.01) {
-					// Price difference is essentially zero (within rounding).
-					priceHtml = '—';
-				} else if (relativePrice > 0) {
-					priceHtml = '+' + self.formatPrice(relativePrice);
+				
+				// For warranty components, always show absolute price.
+				if (isWarranty) {
+					priceHtml = self.formatPrice(optionPrice);
 				} else {
-					// For negative prices, ensure the minus sign is displayed.
-					priceHtml = '-' + self.formatPrice(Math.abs(relativePrice));
+					// For other components, show relative price.
+					if (Math.abs(relativePrice) < 0.01) {
+						// Price difference is essentially zero (within rounding).
+						priceHtml = '—';
+					} else if (relativePrice > 0) {
+						priceHtml = '+' + self.formatPrice(relativePrice);
+					} else {
+						// For negative prices, ensure the minus sign is displayed.
+						priceHtml = '-' + self.formatPrice(Math.abs(relativePrice));
+					}
 				}
 				
 				$priceSpan.html(priceHtml);
@@ -2315,6 +2354,49 @@
 					console.error('Failed to load configuration from URL:', e);
 				}
 			}
+		},
+
+		validateConfiguration: function() {
+			var self = this;
+			var errors = [];
+			
+			// Check if warranty is required and selected.
+			var $warrantyComponent = $('.w2f-pc-component[data-component-id="warranty"]');
+			if ($warrantyComponent.length) {
+				var warrantySelected = this.currentConfiguration['warranty'];
+				if (!warrantySelected || warrantySelected === '0' || warrantySelected === 0) {
+					errors.push({
+						component: 'warranty',
+						message: w2f_pc_params.i18n && w2f_pc_params.i18n.warranty_required ? w2f_pc_params.i18n.warranty_required : 'Please select a warranty option.'
+					});
+				}
+			}
+			
+			// Check other required components.
+			$('.w2f-pc-component').each(function() {
+				var $component = $(this);
+				var componentId = $component.data('component-id');
+				
+				// Skip warranty as we already checked it.
+				if (componentId === 'warranty') {
+					return;
+				}
+				
+				var $optional = $component.find('.component-optional');
+				if ($optional.length === 0) {
+					// Component is required.
+					var selected = self.currentConfiguration[componentId];
+					if (!selected || selected === '0' || selected === 0) {
+						var componentTitle = $component.find('.component-title').text().replace(/\s*\(Optional\).*$/, '').trim();
+						errors.push({
+							component: componentId,
+							message: 'Please select an option for ' + componentTitle + '.'
+						});
+					}
+				}
+			});
+			
+			return errors;
 		},
 
 		addConfigurationToForm: function() {

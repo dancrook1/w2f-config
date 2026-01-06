@@ -564,6 +564,15 @@ class W2F_PC_Cart {
 		$configurator_product = w2f_pc_get_configurator_product( $product );
 		$configuration = $values['w2f_pc_configuration'];
 		$quantities = isset( $values['w2f_pc_configuration_quantities'] ) ? $values['w2f_pc_configuration_quantities'] : array();
+		
+		// Ensure default warranty is set if not in configuration.
+		if ( ! isset( $configuration['warranty'] ) || empty( $configuration['warranty'] ) ) {
+			$warranty_manager = W2F_PC_Warranty_Manager::instance();
+			$default_warranty = $warranty_manager->get_default_warranty();
+			if ( $default_warranty > 0 ) {
+				$configuration['warranty'] = $default_warranty;
+			}
+		}
 
 		// Mark the main configurator product item.
 		$item->add_meta_data( '_w2f_pc_is_configurator', 'yes' );
@@ -576,7 +585,89 @@ class W2F_PC_Cart {
 		$item->set_total_tax( 0 );
 		$item->set_taxes( array() );
 
-		// Check if configuration matches default.
+		// Calculate base warranty cost from component sum (excluding warranty product).
+		$warranty_manager = W2F_PC_Warranty_Manager::instance();
+		$component_sum_ex_tax = 0;
+		
+		// Calculate component sum excluding warranty for base warranty calculation.
+		foreach ( $configuration as $component_id => $product_id ) {
+			if ( 'warranty' === $component_id ) {
+				continue; // Skip warranty component for base warranty calculation.
+			}
+			
+			if ( ! is_numeric( $product_id ) || $product_id <= 0 ) {
+				continue;
+			}
+			
+			$component_product = wc_get_product( $product_id );
+			if ( ! $component_product ) {
+				continue;
+			}
+			
+			$component = $configurator_product->get_component( $component_id );
+			$quantity = 1;
+			if ( $component && $component->enable_quantity() && isset( $quantities[ $component_id ] ) ) {
+				$quantity = max( 1, intval( $quantities[ $component_id ] ) );
+			}
+			
+			$component_price = wc_get_price_excluding_tax( $component_product );
+			$component_sum_ex_tax += $component_price * $quantity;
+		}
+		
+		$base_warranty_cost = $warranty_manager->get_base_warranty_cost( $component_sum_ex_tax, false );
+		
+		// Add base warranty as a separate line item if cost > 0.
+		if ( $base_warranty_cost > 0 ) {
+			// Calculate tax for base warranty.
+			$tax_rates = WC_Tax::get_rates();
+			$base_warranty_tax = 0;
+			$base_warranty_tax_data = array();
+			
+			if ( ! empty( $tax_rates ) ) {
+				$tax_amount = WC_Tax::calc_tax( $base_warranty_cost, $tax_rates, false );
+				$base_warranty_tax = array_sum( $tax_amount );
+				
+				foreach ( $tax_rates as $rate_id => $rate ) {
+					$tax_amount_for_rate = WC_Tax::calc_tax( $base_warranty_cost, array( $rate_id => $rate ), false );
+					if ( ! empty( $tax_amount_for_rate ) ) {
+						$base_warranty_tax_data[ $rate_id ] = array_sum( $tax_amount_for_rate );
+					}
+				}
+			}
+			
+			// Create base warranty line item.
+			$base_warranty_item = new WC_Order_Item_Product();
+			$base_warranty_item->set_props( array(
+				'name'         => __( 'Base Warranty', 'w2f-pc-configurator' ),
+				'tax_class'    => '',
+				'product_id'   => 0,
+				'variation_id' => 0,
+				'variation'    => array(),
+				'quantity'     => 1,
+				'subtotal'     => $base_warranty_cost,
+				'total'        => $base_warranty_cost,
+				'subtotal_tax' => $base_warranty_tax,
+				'total_tax'    => $base_warranty_tax,
+				'taxes'        => array(
+					'subtotal' => $base_warranty_tax_data,
+					'total'    => $base_warranty_tax_data,
+				),
+			) );
+			
+			// Add meta to identify this as base warranty.
+			$base_warranty_item->add_meta_data( '_w2f_pc_is_component', 'yes' );
+			$base_warranty_item->add_meta_data( '_w2f_pc_is_child_item', 'yes' );
+			$base_warranty_item->add_meta_data( '_w2f_pc_configurator_product_id', $product->get_id() );
+			$base_warranty_item->add_meta_data( '_w2f_pc_component_id', 'base_warranty' );
+			$base_warranty_item->add_meta_data( '_w2f_pc_component_title', __( 'Base Warranty', 'w2f-pc-configurator' ) );
+			
+			if ( $order->get_id() > 0 ) {
+				$base_warranty_item->set_order_id( $order->get_id() );
+			}
+			
+			$order->add_item( $base_warranty_item );
+		}
+		
 		// Calculate total component price.
 		$total_component_price = 0;
 
@@ -665,9 +756,13 @@ class W2F_PC_Cart {
 		// Reset flag after adding all component items.
 		self::$processing_components = false;
 		
-		// Store component total in meta for backend display.
+		// Store component total and base warranty cost in meta for backend display.
 		$item->add_meta_data( '_w2f_pc_total_component_price', $total_component_price );
+		$item->add_meta_data( '_w2f_pc_base_warranty_cost', $base_warranty_cost );
 		$item->add_meta_data( __( 'Component Total', 'w2f-pc-configurator' ), wc_price( $total_component_price ) );
+		if ( $base_warranty_cost > 0 ) {
+			$item->add_meta_data( __( 'Base Warranty Cost', 'w2f-pc-configurator' ), wc_price( $base_warranty_cost ) );
+		}
 	}
 
 

@@ -29,15 +29,34 @@ if ( $default_product_id > 0 ) {
 	}
 }
 
-// Sort products by price (ascending) including tax.
-uasort( $option_products, function( $a, $b ) {
-	$price_a = (float) wc_get_price_including_tax( $a );
-	$price_b = (float) wc_get_price_including_tax( $b );
-	if ( $price_a === $price_b ) {
+// Sort products - for warranty, Elite should be second; otherwise sort by price.
+if ( 'warranty' === $component_id ) {
+	uasort( $option_products, function( $a, $b ) {
+		$is_elite_a = stripos( $a->get_name(), 'elite' ) !== false;
+		$is_elite_b = stripos( $b->get_name(), 'elite' ) !== false;
+		
+		// If one is Elite and the other isn't, Elite comes second.
+		if ( $is_elite_a && ! $is_elite_b ) {
+			return 1; // Elite comes after non-Elite.
+		}
+		if ( ! $is_elite_a && $is_elite_b ) {
+			return -1; // Non-Elite comes before Elite.
+		}
+		
+		// If both are Elite or both are not Elite, maintain original order.
 		return 0;
-	}
-	return ( $price_a < $price_b ) ? -1 : 1;
-} );
+	} );
+} else {
+	// Sort products by price (ascending) including tax.
+	uasort( $option_products, function( $a, $b ) {
+		$price_a = (float) wc_get_price_including_tax( $a );
+		$price_b = (float) wc_get_price_including_tax( $b );
+		if ( $price_a === $price_b ) {
+			return 0;
+		}
+		return ( $price_a < $price_b ) ? -1 : 1;
+	} );
+}
 ?>
 
 <div class="w2f-pc-component w2f-pc-component-<?php echo esc_attr( $display_mode ); ?>" data-component-id="<?php echo esc_attr( $component_id ); ?>" data-base-price="<?php echo esc_attr( $base_price ); ?>">
@@ -95,6 +114,32 @@ uasort( $option_products, function( $a, $b ) {
 						$image_id = $option_product->get_image_id();
 						$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) : wc_placeholder_img_src( 'woocommerce_thumbnail' );
 						$option_price = (float) wc_get_price_including_tax( $option_product );
+						
+						// For warranty components, always show absolute price in data attribute.
+						$show_absolute_price = ( 'warranty' === $component_id );
+						
+						// Check if this is Elite warranty and show discount pricing.
+						$is_elite_warranty = false;
+						$elite_regular_price = 0;
+						$elite_sale_price = 0;
+						if ( 'warranty' === $component_id && stripos( $option_product->get_name(), 'elite' ) !== false ) {
+							$is_elite_warranty = true;
+							// Elite regular price is the product's regular price (including tax).
+							$elite_regular_price_ex_tax = (float) $option_product->get_regular_price();
+							if ( empty( $elite_regular_price_ex_tax ) ) {
+								$elite_regular_price_ex_tax = (float) $option_product->get_price();
+							}
+							$tax_rates = WC_Tax::get_rates( $option_product->get_tax_class() );
+							if ( ! empty( $tax_rates ) ) {
+								$tax_amount = WC_Tax::calc_tax( $elite_regular_price_ex_tax, $tax_rates, false );
+								$elite_regular_price = $elite_regular_price_ex_tax + array_sum( $tax_amount );
+							} else {
+								$elite_regular_price = $elite_regular_price_ex_tax;
+							}
+							// Elite sale price is £0.
+							$elite_sale_price = 0;
+						}
+						
 						$relative_price = $option_price - $base_price;
 						$relative_price_formatted = '';
 						if ( $relative_price > 0 ) {
@@ -104,17 +149,25 @@ uasort( $option_products, function( $a, $b ) {
 						} else {
 							$relative_price_formatted = '—';
 						}
-						$default_quantity = isset( $default_configuration_quantities[ $component_id ] ) ? intval( $default_configuration_quantities[ $component_id ] ) : ( $component->enable_quantity() || 'warranty' === $component_id ? $component->get_min_quantity() : 1 );
-						$min_quantity = $component->enable_quantity() || 'warranty' === $component_id ? $component->get_min_quantity() : 1;
-						$max_quantity = $component->enable_quantity() || 'warranty' === $component_id ? $component->get_max_quantity() : 1;
-						$has_quantity = $component->enable_quantity() || 'warranty' === $component_id;
+						$default_quantity = isset( $default_configuration_quantities[ $component_id ] ) ? intval( $default_configuration_quantities[ $component_id ] ) : ( $component->enable_quantity() ? $component->get_min_quantity() : 1 );
+						$min_quantity = $component->enable_quantity() ? $component->get_min_quantity() : 1;
+						$max_quantity = $component->enable_quantity() ? $component->get_max_quantity() : 1;
+						$has_quantity = $component->enable_quantity();
+						
+						// Get regular price for Elite warranty display.
+						$regular_price_ex_tax = (float) $option_product->get_regular_price();
+						if ( empty( $regular_price_ex_tax ) ) {
+							$regular_price_ex_tax = (float) $option_product->get_price();
+						}
 						?>
-						<div class="w2f-pc-thumbnail-card <?php echo esc_attr( $selected ); ?><?php echo $has_quantity ? ' has-quantity' : ''; ?>" 
+						<div class="w2f-pc-thumbnail-card <?php echo esc_attr( $selected ); ?><?php echo $has_quantity ? ' has-quantity' : ''; ?><?php echo $show_absolute_price ? ' w2f-pc-show-absolute-price' : ''; ?>" 
 							 data-product-id="<?php echo esc_attr( $option_product_id ); ?>" 
 							 data-component-id="<?php echo esc_attr( $component_id ); ?>"
 							 data-product-name="<?php echo esc_attr( $option_product->get_name() ); ?>" 
 							 data-price="<?php echo esc_attr( $option_price ); ?>" 
-							 data-relative-price="<?php echo esc_attr( $relative_price ); ?>">
+							 data-relative-price="<?php echo esc_attr( $relative_price ); ?>"
+							 data-absolute-price="<?php echo esc_attr( $option_price ); ?>"
+							 data-regular-price="<?php echo esc_attr( $regular_price_ex_tax ); ?>">
 							<input type="radio" 
 								   name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" 
 								   value="<?php echo esc_attr( $option_product_id ); ?>" 
@@ -137,7 +190,27 @@ uasort( $option_products, function( $a, $b ) {
 							</div>
 							<div class="thumbnail-info">
 								<span class="thumbnail-name"><?php echo esc_html( $option_product->get_name() ); ?></span>
-								<span class="thumbnail-price" data-relative-price="<?php echo esc_attr( $relative_price ); ?>"><?php echo wp_kses_post( $relative_price_formatted ); ?></span>
+								<span class="thumbnail-price" data-relative-price="<?php echo esc_attr( $relative_price ); ?>" data-absolute-price="<?php echo esc_attr( $option_price ); ?>">
+									<?php if ( $show_absolute_price ) : ?>
+										<?php if ( $is_elite_warranty ) : ?>
+											<span class="w2f-pc-price-wrapper">
+												<del class="w2f-pc-regular-price"><?php echo wp_kses_post( wc_price( $elite_regular_price ) ); ?></del>
+												<ins class="w2f-pc-sale-price"><?php echo wp_kses_post( wc_price( $elite_sale_price ) ); ?></ins>
+											</span>
+										<?php else : ?>
+											<?php echo wp_kses_post( wc_price( $option_price ) ); ?>
+										<?php endif; ?>
+									<?php else : ?>
+										<?php if ( $is_elite_warranty ) : ?>
+											<span class="w2f-pc-price-wrapper">
+												<del class="w2f-pc-regular-price"><?php echo wp_kses_post( wc_price( $elite_regular_price ) ); ?></del>
+												<ins class="w2f-pc-sale-price"><?php echo wp_kses_post( wc_price( $elite_sale_price ) ); ?></ins>
+											</span>
+										<?php else : ?>
+											<?php echo wp_kses_post( $relative_price_formatted ); ?>
+										<?php endif; ?>
+									<?php endif; ?>
+								</span>
 							</div>
 							<?php if ( $has_quantity ) : ?>
 								<div class="w2f-pc-thumbnail-quantity" data-component-id="<?php echo esc_attr( $component_id ); ?>" data-product-id="<?php echo esc_attr( $option_product_id ); ?>">

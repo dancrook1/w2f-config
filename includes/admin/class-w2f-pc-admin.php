@@ -121,6 +121,7 @@ class W2F_PC_Admin {
 			wp_enqueue_script( 'jquery' );
 			wp_enqueue_script( 'selectWoo' );
 			wp_enqueue_style( 'select2' );
+			wp_enqueue_script( 'wc-enhanced-select' );
 			wp_enqueue_style( 'w2f-pc-admin', W2F_PC()->plugin_url() . '/assets/css/admin.css', array(), W2F_PC()->plugin_version() );
 		}
 	}

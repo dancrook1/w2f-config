@@ -179,6 +179,57 @@ class W2F_PC_Product extends WC_Product {
 			foreach ( $components_data as $component_id => $component_data ) {
 				$this->components[ $component_id ] = new W2F_PC_Component( $component_id, $this, $component_data );
 			}
+			
+			// Inject warranty component if warranty products are configured.
+			$warranty_manager = W2F_PC_Warranty_Manager::instance();
+			$warranty_products = $warranty_manager->get_warranty_products();
+			
+			if ( ! empty( $warranty_products ) && ! isset( $this->components['warranty'] ) ) {
+				// Sort warranty products so Elite is second.
+				usort( $warranty_products, function( $a, $b ) {
+					$product_a = wc_get_product( $a );
+					$product_b = wc_get_product( $b );
+					
+					if ( ! $product_a || ! $product_b ) {
+						return 0;
+					}
+					
+					$is_elite_a = stripos( $product_a->get_name(), 'elite' ) !== false;
+					$is_elite_b = stripos( $product_b->get_name(), 'elite' ) !== false;
+					
+					// If one is Elite and the other isn't, Elite comes second.
+					if ( $is_elite_a && ! $is_elite_b ) {
+						return 1; // Elite comes after non-Elite.
+					}
+					if ( ! $is_elite_a && $is_elite_b ) {
+						return -1; // Non-Elite comes before Elite.
+					}
+					
+					// If both are Elite or both are not Elite, maintain original order.
+					return 0;
+				} );
+				
+				// Get warranty description from settings.
+				$warranty_description = $warranty_manager->get_warranty_description();
+				
+				// Create warranty component data.
+				$warranty_component_data = array(
+					'title'              => __( 'Warranty', 'w2f-pc-configurator' ),
+					'description'        => $warranty_description,
+					'optional'           => 'no', // Required.
+					'display_mode'       => 'thumbnail',
+					'tab'                => 'Services',
+					'show_search'        => 'no',
+					'show_dropdown_image' => 'no',
+					'enable_quantity'    => 'no',
+					'min_quantity'       => 1,
+					'max_quantity'       => 1,
+					'options'            => $warranty_products,
+					'categories'         => array(),
+				);
+				
+				$this->components['warranty'] = new W2F_PC_Component( 'warranty', $this, $warranty_component_data );
+			}
 		}
 		return $this->components;
 	}
@@ -204,6 +255,15 @@ class W2F_PC_Product extends WC_Product {
 			$this->default_configuration = $this->get_meta( '_w2f_pc_default_configuration', true );
 			if ( ! is_array( $this->default_configuration ) ) {
 				$this->default_configuration = array();
+			}
+			
+			// Add default warranty if not already set and warranty component exists.
+			if ( ! isset( $this->default_configuration['warranty'] ) ) {
+				$warranty_manager = W2F_PC_Warranty_Manager::instance();
+				$default_warranty = $warranty_manager->get_default_warranty();
+				if ( $default_warranty > 0 ) {
+					$this->default_configuration['warranty'] = $default_warranty;
+				}
 			}
 		}
 		return $this->default_configuration;
@@ -392,7 +452,7 @@ class W2F_PC_Product extends WC_Product {
 
 	/**
 	 * Calculate price from configuration.
-	 * Simply sums all component prices and adds tax.
+	 * Sums all component prices, adds base warranty cost, and adds tax.
 	 *
 	 * @param  array $configuration
 	 * @param  bool  $include_tax Whether to include tax in the price (default: true for display).
@@ -400,10 +460,49 @@ class W2F_PC_Product extends WC_Product {
 	 * @return float
 	 */
 	public function calculate_configuration_price( $configuration, $include_tax = true, $quantities = array() ) {
-		// Calculate sum of all component prices.
+		// Calculate component sum excluding warranty for base warranty calculation.
+		$component_sum_ex_tax = 0;
+		$components = $this->get_components();
+		
+		foreach ( $configuration as $component_id => $product_id ) {
+			// Skip warranty component for base warranty calculation.
+			if ( 'warranty' === $component_id ) {
+				continue;
+			}
+			
+			// Skip invalid product IDs.
+			if ( ! is_numeric( $product_id ) || $product_id <= 0 ) {
+				continue;
+			}
+			
+			$product = wc_get_product( $product_id );
+			if ( ! $product ) {
+				continue;
+			}
+			
+			// Get price excluding tax for base warranty calculation.
+			$price = wc_get_price_excluding_tax( $product );
+			
+			// Multiply by quantity if quantity is enabled for this component.
+			$quantity = 1;
+			if ( isset( $components[ $component_id ] ) && $components[ $component_id ]->enable_quantity() ) {
+				$quantity = isset( $quantities[ $component_id ] ) ? max( 1, intval( $quantities[ $component_id ] ) ) : 1;
+			}
+			
+			$component_sum_ex_tax += (float) $price * $quantity;
+		}
+		
+		// Get base warranty cost based on component sum (excluding tax for bracket lookup).
+		$warranty_manager = W2F_PC_Warranty_Manager::instance();
+		$base_warranty_cost = $warranty_manager->get_base_warranty_cost( $component_sum_ex_tax, $include_tax );
+		
+		// Calculate total component sum (including warranty product if selected, with correct tax).
 		$component_sum = $this->calculate_component_sum( $configuration, $include_tax, $quantities );
 		
-		return max( 0, $component_sum );
+		// Add base warranty cost.
+		$total = $component_sum + $base_warranty_cost;
+		
+		return max( 0, $total );
 	}
 
 	/**

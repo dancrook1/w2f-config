@@ -246,6 +246,9 @@ class W2F_PC_Configurator {
 		// Compatibility manager.
 		require_once W2F_PC_ABSPATH . 'includes/class-w2f-pc-compatibility-manager.php';
 
+		// Warranty manager.
+		require_once W2F_PC_ABSPATH . 'includes/class-w2f-pc-warranty-manager.php';
+
 		// Cart integration.
 		require_once W2F_PC_ABSPATH . 'includes/class-w2f-pc-cart.php';
 

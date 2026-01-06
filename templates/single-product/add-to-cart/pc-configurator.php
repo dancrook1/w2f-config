@@ -33,6 +33,11 @@ foreach ( $defined_tabs as $tab_name ) {
 	$tabs[ $tab_name ] = array();
 }
 
+// Ensure Services tab exists if warranty component exists.
+if ( isset( $components['warranty'] ) && ! isset( $tabs['Services'] ) ) {
+	$tabs['Services'] = array();
+}
+
 // Assign components to tabs.
 foreach ( $components as $component_id => $component ) {
 	$tab = $component->get_tab();
@@ -43,9 +48,10 @@ foreach ( $components as $component_id => $component ) {
 	}
 }
 
-// Remove empty tabs.
+// Don't remove Services tab if warranty component exists, even if empty.
+$has_warranty = isset( $components['warranty'] );
 foreach ( $tabs as $tab_name => $tab_components ) {
-	if ( empty( $tab_components ) ) {
+	if ( empty( $tab_components ) && ( $tab_name !== 'Services' || ! $has_warranty ) ) {
 		unset( $tabs[ $tab_name ] );
 	}
 }

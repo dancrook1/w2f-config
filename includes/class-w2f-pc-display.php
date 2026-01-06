@@ -142,6 +142,7 @@ class W2F_PC_Display {
 				'select_component' => __( 'Please select a component', 'w2f-pc-configurator' ),
 				'components_selected' => __( 'components selected', 'w2f-pc-configurator' ),
 				'reset_confirm'    => __( 'Reset to default configuration?', 'w2f-pc-configurator' ),
+				'warranty_required' => __( 'Please select a warranty option.', 'w2f-pc-configurator' ),
 			),
 		) );
 	}

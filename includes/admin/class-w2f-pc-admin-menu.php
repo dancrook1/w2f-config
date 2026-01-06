@@ -91,6 +91,16 @@ class W2F_PC_Admin_Menu {
 			array( $this, 'render_bulk_update_page' )
 		);
 
+		// Warranty Settings.
+		add_submenu_page(
+			'w2f-pc-configurator',
+			__( 'Warranty Settings', 'w2f-pc-configurator' ),
+			__( 'Warranty', 'w2f-pc-configurator' ),
+			'manage_woocommerce',
+			'w2f-pc-warranty',
+			array( $this, 'render_warranty_page' )
+		);
+
 	}
 
 	/**
@@ -123,6 +133,13 @@ class W2F_PC_Admin_Menu {
 		}
 		
 		include W2F_PC()->plugin_path() . '/includes/admin/views/html-bulk-update.php';
+	}
+
+	/**
+	 * Render warranty settings page.
+	 */
+	public function render_warranty_page() {
+		include W2F_PC()->plugin_path() . '/includes/admin/views/html-warranty-settings.php';
 	}
 
 }

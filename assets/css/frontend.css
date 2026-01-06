@@ -1171,6 +1171,13 @@
 	color: #d97706;
 }
 
+/* Warranty components always show price, even when selected */
+.w2f-pc-component[data-component-id="warranty"] .w2f-pc-thumbnail-card.selected .thumbnail-price {
+	display: block !important;
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
 /* ============================================
    BUTTONS
    ============================================ */
