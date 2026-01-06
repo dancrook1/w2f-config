@@ -1498,7 +1498,7 @@
 			var $component = $('.w2f-pc-component[data-component-id="' + componentId + '"]');
 			var selectedProductId = this.currentConfiguration[componentId];
 			
-			// Get the currently selected product's price (absolute price).
+			// Get the currently selected product's price (absolute price, already discounted if applicable).
 			var selectedProductPrice = 0;
 			if (selectedProductId) {
 				var $selectedOption = $component.find('[data-product-id="' + selectedProductId + '"]');
@@ -1507,13 +1507,13 @@
 				}
 			}
 			
-			// If no product is selected, use the base price (default product price).
+			// If no product is selected, use the base price (default product price, already discounted if applicable).
 			if (selectedProductPrice === 0) {
 				selectedProductPrice = parseFloat($component.attr('data-base-price')) || 0;
 			}
 
-			// Update thumbnail prices.
-			$component.find('.w2f-pc-thumbnail-option').each(function() {
+			// Update thumbnail prices (using .w2f-pc-thumbnail-card selector).
+			$component.find('.w2f-pc-thumbnail-card').each(function() {
 				var $option = $(this);
 				var optionPrice = parseFloat($option.attr('data-price')) || 0;
 				var relativePrice = optionPrice - selectedProductPrice;

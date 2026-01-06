@@ -27,7 +27,6 @@ class W2F_PC_Bulk_Updater {
 	 */
 	public static function find_product_usage( $product_id ) {
 		$usage = array(
-			'in_defaults' => array(),
 			'in_component_options' => array(),
 		);
 
@@ -47,19 +46,6 @@ class W2F_PC_Bulk_Updater {
 			$found_in_components = false;
 			$component_details = array();
 
-			// Check default configuration.
-			$default_config = $config_product->get_default_configuration();
-			foreach ( $default_config as $component_id => $default_product_id ) {
-				if ( (int) $default_product_id === (int) $product_id ) {
-					$found_in_default = true;
-					$usage['in_defaults'][] = array(
-						'configurator_id' => $config_id,
-						'configurator_name' => $config_product->get_name(),
-						'component_id' => $component_id,
-					);
-					break;
-				}
-			}
 
 			// Check component options.
 			$components = $config_product->get_components();
@@ -226,23 +212,15 @@ class W2F_PC_Bulk_Updater {
 	 *
 	 * @param  int    $old_product_id
 	 * @param  int    $new_product_id
-	 * @param  bool   $update_defaults
 	 * @param  bool   $update_options
 	 * @return array Combined results
 	 */
-	public static function bulk_update( $old_product_id, $new_product_id, $update_defaults = true, $update_options = true ) {
+	public static function bulk_update( $old_product_id, $new_product_id, $update_options = true ) {
 		$results = array(
-			'defaults' => array(),
 			'options' => array(),
 			'total_updated' => 0,
 			'total_errors' => 0,
 		);
-
-		if ( $update_defaults ) {
-			$results['defaults'] = self::update_default_configurations( $old_product_id, $new_product_id );
-			$results['total_updated'] += $results['defaults']['updated'];
-			$results['total_errors'] += count( $results['defaults']['errors'] );
-		}
 
 		if ( $update_options ) {
 			$results['options'] = self::update_component_options( $old_product_id, $new_product_id );

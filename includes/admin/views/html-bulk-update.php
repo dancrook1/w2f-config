@@ -28,11 +28,10 @@ if ( isset( $_POST['w2f_pc_bulk_update_preview'] ) && check_admin_referer( 'w2f-
 if ( isset( $_POST['w2f_pc_bulk_update_execute'] ) && check_admin_referer( 'w2f-pc-bulk-update-execute' ) ) {
 	$old_product_id = isset( $_POST['old_product_id'] ) ? intval( $_POST['old_product_id'] ) : 0;
 	$new_product_id = isset( $_POST['new_product_id'] ) ? intval( $_POST['new_product_id'] ) : 0;
-	$update_defaults = isset( $_POST['update_defaults'] ) && 'yes' === $_POST['update_defaults'];
 	$update_options = isset( $_POST['update_options'] ) && 'yes' === $_POST['update_options'];
 
 	if ( $old_product_id > 0 && $new_product_id > 0 ) {
-		$update_results = W2F_PC_Bulk_Updater::bulk_update( $old_product_id, $new_product_id, $update_defaults, $update_options );
+		$update_results = W2F_PC_Bulk_Updater::bulk_update( $old_product_id, $new_product_id, $update_options );
 		$update_results['old_product_id'] = $old_product_id;
 		$update_results['new_product_id'] = $new_product_id;
 		$old_product = wc_get_product( $old_product_id );
@@ -104,24 +103,11 @@ if ( isset( $_POST['w2f_pc_bulk_update_execute'] ) && check_admin_referer( 'w2f-
 		<div class="w2f-pc-bulk-update-preview">
 			<h2><?php esc_html_e( 'Preview: Where This Product Is Used', 'w2f-pc-configurator' ); ?></h2>
 			
-			<?php if ( empty( $preview_data['in_defaults'] ) && empty( $preview_data['in_component_options'] ) ) : ?>
+			<?php if ( empty( $preview_data['in_component_options'] ) ) : ?>
 				<div class="notice notice-info">
 					<p><?php esc_html_e( 'This product is not used in any configurator products.', 'w2f-pc-configurator' ); ?></p>
 				</div>
 			<?php else : ?>
-				<?php if ( ! empty( $preview_data['in_defaults'] ) ) : ?>
-					<h3><?php esc_html_e( 'Used in Default Configurations', 'w2f-pc-configurator' ); ?></h3>
-					<ul>
-						<?php foreach ( $preview_data['in_defaults'] as $usage ) : ?>
-							<li>
-								<strong><?php echo esc_html( $usage['configurator_name'] ); ?></strong>
-								<?php esc_html_e( ' - Component:', 'w2f-pc-configurator' ); ?>
-								<?php echo esc_html( $usage['component_id'] ); ?>
-							</li>
-						<?php endforeach; ?>
-					</ul>
-				<?php endif; ?>
-
 				<?php if ( ! empty( $preview_data['in_component_options'] ) ) : ?>
 					<h3><?php esc_html_e( 'Used in Component Options', 'w2f-pc-configurator' ); ?></h3>
 					<ul>
@@ -160,13 +146,6 @@ if ( isset( $_POST['w2f_pc_bulk_update_execute'] ) && check_admin_referer( 'w2f-
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Update Options', 'w2f-pc-configurator' ); ?></th>
 							<td>
-								<label>
-									<input type="checkbox" name="update_defaults" value="yes" <?php checked( ! empty( $preview_data['in_defaults'] ) ); ?> <?php disabled( empty( $preview_data['in_defaults'] ) ); ?> />
-									<?php esc_html_e( 'Update Default Configurations', 'w2f-pc-configurator' ); ?>
-									<?php if ( ! empty( $preview_data['in_defaults'] ) ) : ?>
-										<span class="description">(<?php echo esc_html( count( $preview_data['in_defaults'] ) ); ?> <?php esc_html_e( 'configurator(s) affected', 'w2f-pc-configurator' ); ?>)</span>
-									<?php endif; ?>
-								</label><br>
 								<label>
 									<input type="checkbox" name="update_options" value="yes" <?php checked( ! empty( $preview_data['in_component_options'] ) ); ?> <?php disabled( empty( $preview_data['in_component_options'] ) ); ?> />
 									<?php esc_html_e( 'Update Component Options', 'w2f-pc-configurator' ); ?>

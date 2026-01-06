@@ -22,7 +22,6 @@ $component_show_dropdown_image = isset( $component_data['show_dropdown_image'] )
 $component_enable_quantity = isset( $component_data['enable_quantity'] ) && 'yes' === $component_data['enable_quantity'] ? 'yes' : 'no';
 $component_min_quantity = isset( $component_data['min_quantity'] ) ? intval( $component_data['min_quantity'] ) : 1;
 $component_max_quantity = isset( $component_data['max_quantity'] ) ? intval( $component_data['max_quantity'] ) : 99;
-$default_product_id = isset( $default_configuration[ $component_id ] ) ? $default_configuration[ $component_id ] : 0;
 ?>
 
 <div class="w2f_pc_component" data-component_id="<?php echo esc_attr( $component_id ); ?>">
@@ -151,20 +150,6 @@ $default_product_id = isset( $default_configuration[ $component_id ] ) ? $defaul
 			<?php echo wc_help_tip( __( 'Select product categories. All products in selected categories will be available for this component.', 'w2f-pc-configurator' ) ); ?>
 		</p>
 
-		<p class="form-field">
-			<label for="w2f_pc_default_configuration[<?php echo esc_attr( $component_id ); ?>]"><?php esc_html_e( 'Default Product', 'w2f-pc-configurator' ); ?></label>
-			<select name="w2f_pc_default_configuration[<?php echo esc_attr( $component_id ); ?>]" class="wc-product-search default-product-search" style="width: 100%;" data-placeholder="<?php esc_attr_e( 'Select default product&hellip;', 'w2f-pc-configurator' ); ?>">
-				<?php
-				if ( $default_product_id ) {
-					$default_product = wc_get_product( $default_product_id );
-					if ( $default_product ) {
-						echo '<option value="' . esc_attr( $default_product_id ) . '" selected="selected">' . esc_html( $default_product->get_formatted_name() ) . '</option>';
-					}
-				}
-				?>
-			</select>
-			<?php echo wc_help_tip( __( 'Select the default product for this component in the default configuration. Only products from the selected options and categories will be available.', 'w2f-pc-configurator' ) ); ?>
-		</p>
 	</div>
 </div>
 

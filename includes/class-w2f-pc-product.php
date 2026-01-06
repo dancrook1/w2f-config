@@ -123,35 +123,23 @@ class W2F_PC_Product extends WC_Product {
 			return false;
 		}
 		
-		// Ensure product has a price (use default price if regular price is not set).
-		$price = parent::get_price();
-		if ( empty( $price ) || $price <= 0 ) {
-			$default_price = $this->get_default_price();
-			if ( $default_price > 0 ) {
-				// Temporarily set price for purchasability check.
-				$this->set_price( $default_price );
-			}
-		}
-		
+		// Price is calculated from components, product is always purchasable if it has components.
 		return parent::is_purchasable();
 	}
 
 	/**
 	 * Get price.
-	 * Returns default price if regular price is not set.
+	 * Returns the stored price if set (from cart calculation), otherwise 0.
 	 *
 	 * @param  string $context
-	 * @return string
+	 * @return float
 	 */
 	public function get_price( $context = 'view' ) {
+		// Get the stored price (set by cart calculation).
 		$price = parent::get_price( $context );
-		if ( empty( $price ) || $price <= 0 ) {
-			$default_price = $this->get_default_price();
-			if ( $default_price > 0 ) {
-				return $default_price;
-			}
-		}
-		return $price;
+		
+		// If price is set (from cart), return it. Otherwise return 0.
+		return $price > 0 ? $price : 0;
 	}
 
 	/**
@@ -361,66 +349,74 @@ class W2F_PC_Product extends WC_Product {
 	}
 
 	/**
-	 * Calculate price from configuration.
+	 * Calculate the sum of component prices for a configuration (without any discount).
 	 *
 	 * @param  array $configuration
-	 * @param  bool  $include_tax Whether to include tax in the price (default: true for display).
-	 * @return float
+	 * @param  bool  $include_tax Whether to include tax in the price.
+	 * @param  array $quantities Component quantities.
+	 * @return float Sum of component prices.
 	 */
-	public function calculate_configuration_price( $configuration, $include_tax = true, $quantities = array() ) {
-		// If matches default, return default price.
-		if ( $this->is_default_configuration( $configuration ) ) {
-			$default_price = $this->get_default_price(); // This is stored excluding tax.
-			if ( $default_price > 0 ) {
-				if ( $include_tax ) {
-					// Default price is stored excluding tax, so add tax for display.
-					return $this->calculate_price_including_tax( $default_price );
-				}
-				// Return excluding tax for cart calculations.
-				return $default_price;
-			}
-		}
-
-		// Otherwise, sum component prices.
+	private function calculate_component_sum( $configuration, $include_tax = false, $quantities = array() ) {
 		$total = 0;
 		$components = $this->get_components();
+		
 		foreach ( $configuration as $component_id => $product_id ) {
-			$product = wc_get_product( $product_id );
-			if ( $product ) {
-				if ( $include_tax ) {
-					// Get price including tax for display.
-					$price = wc_get_price_including_tax( $product );
-				} else {
-					// Get price excluding tax for cart calculation.
-					$price = wc_get_price_excluding_tax( $product );
-				}
-				
-				// Multiply by quantity if quantity is enabled for this component.
-				$quantity = 1;
-				if ( isset( $components[ $component_id ] ) && $components[ $component_id ]->enable_quantity() ) {
-					$quantity = isset( $quantities[ $component_id ] ) ? max( 1, intval( $quantities[ $component_id ] ) ) : 1;
-				}
-				
-				$total += (float) $price * $quantity;
+			// Skip invalid product IDs.
+			if ( ! is_numeric( $product_id ) || $product_id <= 0 ) {
+				continue;
 			}
+			
+			$product = wc_get_product( $product_id );
+			if ( ! $product ) {
+				continue;
+			}
+			
+			// Get price (including or excluding tax).
+			if ( $include_tax ) {
+				$price = wc_get_price_including_tax( $product );
+			} else {
+				$price = wc_get_price_excluding_tax( $product );
+			}
+			
+			// Multiply by quantity if quantity is enabled for this component.
+			$quantity = 1;
+			if ( isset( $components[ $component_id ] ) && $components[ $component_id ]->enable_quantity() ) {
+				$quantity = isset( $quantities[ $component_id ] ) ? max( 1, intval( $quantities[ $component_id ] ) ) : 1;
+			}
+			
+			$total += (float) $price * $quantity;
 		}
+		
 		return $total;
 	}
 
 	/**
+	 * Calculate price from configuration.
+	 * Simply sums all component prices and adds tax.
+	 *
+	 * @param  array $configuration
+	 * @param  bool  $include_tax Whether to include tax in the price (default: true for display).
+	 * @param  array $quantities Component quantities.
+	 * @return float
+	 */
+	public function calculate_configuration_price( $configuration, $include_tax = true, $quantities = array() ) {
+		// Calculate sum of all component prices.
+		$component_sum = $this->calculate_component_sum( $configuration, $include_tax, $quantities );
+		
+		return max( 0, $component_sum );
+	}
+
+	/**
 	 * Get price HTML.
+	 * Price is calculated from components, so return empty or calculated price.
 	 *
 	 * @param  string $price
 	 * @return string
 	 */
 	public function get_price_html( $price = '' ) {
-		$default_price = $this->get_default_price(); // Stored excluding tax.
-		if ( $default_price > 0 ) {
-			// Default price is stored excluding tax, convert to including tax for display.
-			$display_price = $this->calculate_price_including_tax( $default_price );
-			return wc_price( $display_price );
-		}
-		return parent::get_price_html( $price );
+		// Price is calculated dynamically from components.
+		return '';
 	}
 }
+
 

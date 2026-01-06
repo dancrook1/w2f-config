@@ -112,14 +112,8 @@ class W2F_PC_Display {
 
 		$configurator_product = w2f_pc_get_configurator_product( $product );
 		$default_configuration = $configurator_product->get_default_configuration();
-		$default_price = $configurator_product->get_default_price(); // Stored excluding tax.
-		
-		// Convert default price to include tax for display (default price is always stored excluding tax).
-		if ( $default_price > 0 ) {
-			// Default price is stored excluding tax, so always add tax for customer display.
-			// Use calculate_configuration_price to ensure tax is calculated correctly.
-			$default_price = $configurator_product->calculate_configuration_price( $default_configuration, true );
-		}
+		// Calculate default price from components (sum + tax).
+		$default_price = $configurator_product->calculate_configuration_price( $default_configuration, true );
 
 		// Get currency formatting from WooCommerce.
 		$currency_symbol = get_woocommerce_currency_symbol();

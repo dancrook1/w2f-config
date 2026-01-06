@@ -577,43 +577,8 @@ class W2F_PC_Cart {
 		$item->set_taxes( array() );
 
 		// Check if configuration matches default.
-		$is_default = $configurator_product->is_default_configuration( $configuration );
-		$default_price = $configurator_product->get_default_price();
-		
-		// Calculate total component price before any discount.
-		$total_component_price_before_discount = 0;
-		$component_line_totals = array();
-
-		// First pass: calculate all component prices at full price.
-		foreach ( $configuration as $component_id => $product_id ) {
-			$component = $configurator_product->get_component( $component_id );
-			$component_product = wc_get_product( $product_id );
-			
-			if ( ! $component || ! $component_product ) {
-				continue;
-			}
-
-			// Get quantity for this component.
-			$quantity = 1;
-			if ( $component->enable_quantity() && isset( $quantities[ $component_id ] ) ) {
-				$quantity = max( 1, intval( $quantities[ $component_id ] ) );
-			}
-
-			// Get component product price (excluding tax) at full price.
-			$component_price = wc_get_price_excluding_tax( $component_product );
-			$line_subtotal_full = $component_price * $quantity;
-			$total_component_price_before_discount += $line_subtotal_full;
-			$component_line_totals[ $component_id ] = $line_subtotal_full;
-		}
-
-		// Calculate discount percentage if default configuration.
-		$discount_percentage = 0;
-		$total_discount_amount = 0;
-		if ( $is_default && $default_price > 0 && $total_component_price_before_discount > 0 ) {
-			// Calculate discount amount and percentage.
-			$total_discount_amount = $total_component_price_before_discount - $default_price;
-			$discount_percentage = ( $total_discount_amount / $total_component_price_before_discount ) * 100;
-		}
+		// Calculate total component price.
+		$total_component_price = 0;
 
 		// Add each component as a separate line item.
 		foreach ( $configuration as $component_id => $product_id ) {
@@ -632,26 +597,18 @@ class W2F_PC_Cart {
 
 			// Get component product price (excluding tax).
 			$component_price = wc_get_price_excluding_tax( $component_product );
-			$line_subtotal_full = $component_price * $quantity;
-			
-			// Apply percentage discount if default configuration.
-			$line_subtotal = $line_subtotal_full;
+			$line_subtotal = $component_price * $quantity;
 			$line_total = $line_subtotal;
-			if ( $is_default && $discount_percentage > 0 ) {
-				// Apply the same percentage discount to this component.
-				$line_discount = $line_subtotal_full * ( $discount_percentage / 100 );
-				$line_subtotal = $line_subtotal_full - $line_discount;
-				$line_total = $line_subtotal;
-			}
+			$total_component_price += $line_subtotal;
 			
-			// Calculate tax for this component using WooCommerce tax calculation (on discounted price if applicable).
+			// Calculate tax for this component using WooCommerce tax calculation.
 			$tax_rates = WC_Tax::get_rates( $component_product->get_tax_class() );
 			$line_subtotal_tax = 0;
 			$line_total_tax = 0;
 			$line_tax_data = array();
 			
 			if ( ! empty( $tax_rates ) ) {
-				// Calculate tax on the discounted price (line_subtotal already has discount applied if default).
+				// Calculate tax on the component price.
 				$tax_amount = WC_Tax::calc_tax( $line_subtotal, $tax_rates, false );
 				$line_subtotal_tax = array_sum( $tax_amount );
 				$line_total_tax = $line_subtotal_tax;
@@ -707,34 +664,10 @@ class W2F_PC_Cart {
 
 		// Reset flag after adding all component items.
 		self::$processing_components = false;
-
-		// Calculate final total (sum of all component prices after discount if default).
-		// This is for reference only - main product stays at £0, components have all pricing.
-		$total_component_price_after_discount = 0;
-		foreach ( $component_line_totals as $component_id => $full_price ) {
-			if ( $is_default && $discount_percentage > 0 ) {
-				$total_component_price_after_discount += $full_price * ( 1 - ( $discount_percentage / 100 ) );
-			} else {
-				$total_component_price_after_discount += $full_price;
-			}
-		}
 		
-		// Store discount info in meta for backend display.
-		// Main product is already set to £0 above - components have all the pricing.
-		$item->add_meta_data( '_w2f_pc_is_default_configuration', $is_default ? 'yes' : 'no' );
-		$item->add_meta_data( '_w2f_pc_default_price', $default_price );
-		$item->add_meta_data( '_w2f_pc_total_component_price_before_discount', $total_component_price_before_discount );
-		$item->add_meta_data( '_w2f_pc_total_component_price', $total_component_price_after_discount );
-		
-		// Add readable discount info for backend.
-		if ( $is_default && $discount_percentage > 0 ) {
-			$item->add_meta_data( __( 'Component Total (Before Discount)', 'w2f-pc-configurator' ), wc_price( $total_component_price_before_discount ) );
-			$item->add_meta_data( __( 'Discount Percentage', 'w2f-pc-configurator' ), number_format( $discount_percentage, 2 ) . '%' );
-			$item->add_meta_data( __( 'Discount Amount', 'w2f-pc-configurator' ), wc_price( $total_discount_amount ) );
-			$item->add_meta_data( __( 'Final Total', 'w2f-pc-configurator' ), wc_price( $total_component_price_after_discount ) );
-		} else {
-			$item->add_meta_data( __( 'Component Total', 'w2f-pc-configurator' ), wc_price( $total_component_price_after_discount ) );
-		}
+		// Store component total in meta for backend display.
+		$item->add_meta_data( '_w2f_pc_total_component_price', $total_component_price );
+		$item->add_meta_data( __( 'Component Total', 'w2f-pc-configurator' ), wc_price( $total_component_price ) );
 	}
 
 
@@ -804,24 +737,12 @@ class W2F_PC_Cart {
 			$configuration = $cart_item['w2f_pc_configuration'];
 			$quantities = isset( $cart_item['w2f_pc_configuration_quantities'] ) ? $cart_item['w2f_pc_configuration_quantities'] : array();
 
-			// Check if configuration matches default.
-			$is_default = $configurator_product->is_default_configuration( $configuration );
+			// Calculate price from components (sum of all component prices excluding tax).
+			$price = $configurator_product->calculate_configuration_price( $configuration, false, $quantities );
 			
-			// Calculate total component price (excluding tax) at full price.
-			$total_component_price = $configurator_product->calculate_configuration_price( $configuration, false, $quantities );
-
-			// Apply discount only if default configuration.
-			$price = $total_component_price;
-			if ( $is_default ) {
-				// If default, use the default price (which already represents the discounted total).
-				$default_price = $configurator_product->get_default_price();
-				if ( $default_price > 0 ) {
-					$price = $default_price;
-				}
-			}
-			// If not default, price is already the sum of all components (no discount).
-			
-			$product->set_price( max( 0, $price ) ); // Ensure price doesn't go negative.
+			// Set both price and regular_price so WooCommerce can calculate totals correctly.
+			$product->set_price( max( 0, $price ) );
+			$product->set_regular_price( max( 0, $price ) );
 		}
 	}
 
