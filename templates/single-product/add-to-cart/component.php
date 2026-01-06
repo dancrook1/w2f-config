@@ -15,6 +15,11 @@ $default_product_id = isset( $default_configuration[ $component_id ] ) ? $defaul
 $display_mode = $component->get_display_mode();
 $option_products = $component->get_option_products();
 
+// Initialize default quantities if not set.
+if ( ! isset( $default_configuration_quantities ) ) {
+	$default_configuration_quantities = array();
+}
+
 // Calculate base price (default option price) including tax.
 $base_price = 0;
 if ( $default_product_id > 0 ) {
@@ -62,8 +67,19 @@ uasort( $option_products, function( $a, $b ) {
 				<div class="w2f-pc-thumbnail-grid">
 					<?php if ( $component->is_optional() ) : ?>
 						<!-- None Option for Optional Components -->
-						<label class="w2f-pc-thumbnail-option w2f-pc-none-option <?php echo ( 0 === $default_product_id ) ? 'selected' : ''; ?>" data-product-id="0" data-product-name="<?php esc_attr_e( 'None', 'w2f-pc-configurator' ); ?>" data-price="0" data-relative-price="0">
-							<input type="radio" name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" value="0" <?php checked( 0, $default_product_id ); ?> class="component-select-radio" data-component-id="<?php echo esc_attr( $component_id ); ?>" />
+						<div class="w2f-pc-thumbnail-card w2f-pc-none-option <?php echo ( 0 === $default_product_id ) ? 'selected' : ''; ?>" 
+							 data-product-id="0" 
+							 data-component-id="<?php echo esc_attr( $component_id ); ?>"
+							 data-product-name="<?php esc_attr_e( 'None', 'w2f-pc-configurator' ); ?>" 
+							 data-price="0" 
+							 data-relative-price="0">
+							<input type="radio" 
+								   name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" 
+								   value="0" 
+								   <?php checked( 0, $default_product_id ); ?> 
+								   class="component-select-radio" 
+								   data-component-id="<?php echo esc_attr( $component_id ); ?>"
+								   id="w2f_pc_thumb_<?php echo esc_attr( $component_id ); ?>_0" />
 							<div class="thumbnail-image">
 								<div class="w2f-pc-none-placeholder"><?php esc_html_e( 'None', 'w2f-pc-configurator' ); ?></div>
 							</div>
@@ -71,7 +87,7 @@ uasort( $option_products, function( $a, $b ) {
 								<span class="thumbnail-name"><?php esc_html_e( 'None', 'w2f-pc-configurator' ); ?></span>
 								<span class="thumbnail-price" data-relative-price="0">—</span>
 							</div>
-						</label>
+						</div>
 					<?php endif; ?>
 					<?php foreach ( $option_products as $option_product_id => $option_product ) : ?>
 						<?php
@@ -88,9 +104,24 @@ uasort( $option_products, function( $a, $b ) {
 						} else {
 							$relative_price_formatted = '—';
 						}
+						$default_quantity = isset( $default_configuration_quantities[ $component_id ] ) ? intval( $default_configuration_quantities[ $component_id ] ) : ( $component->enable_quantity() || 'warranty' === $component_id ? $component->get_min_quantity() : 1 );
+						$min_quantity = $component->enable_quantity() || 'warranty' === $component_id ? $component->get_min_quantity() : 1;
+						$max_quantity = $component->enable_quantity() || 'warranty' === $component_id ? $component->get_max_quantity() : 1;
+						$has_quantity = $component->enable_quantity() || 'warranty' === $component_id;
 						?>
-						<label class="w2f-pc-thumbnail-option <?php echo esc_attr( $selected ); ?>" data-product-id="<?php echo esc_attr( $option_product_id ); ?>" data-product-name="<?php echo esc_attr( $option_product->get_name() ); ?>" data-price="<?php echo esc_attr( $option_price ); ?>" data-relative-price="<?php echo esc_attr( $relative_price ); ?>">
-							<input type="radio" name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" value="<?php echo esc_attr( $option_product_id ); ?>" <?php checked( $default_product_id, $option_product_id ); ?> class="component-select-radio" data-component-id="<?php echo esc_attr( $component_id ); ?>" />
+						<div class="w2f-pc-thumbnail-card <?php echo esc_attr( $selected ); ?><?php echo $has_quantity ? ' has-quantity' : ''; ?>" 
+							 data-product-id="<?php echo esc_attr( $option_product_id ); ?>" 
+							 data-component-id="<?php echo esc_attr( $component_id ); ?>"
+							 data-product-name="<?php echo esc_attr( $option_product->get_name() ); ?>" 
+							 data-price="<?php echo esc_attr( $option_price ); ?>" 
+							 data-relative-price="<?php echo esc_attr( $relative_price ); ?>">
+							<input type="radio" 
+								   name="w2f_pc_configuration[<?php echo esc_attr( $component_id ); ?>]" 
+								   value="<?php echo esc_attr( $option_product_id ); ?>" 
+								   <?php checked( $default_product_id, $option_product_id ); ?> 
+								   class="component-select-radio" 
+								   data-component-id="<?php echo esc_attr( $component_id ); ?>"
+								   id="w2f_pc_thumb_<?php echo esc_attr( $component_id ); ?>_<?php echo esc_attr( $option_product_id ); ?>" />
 							<div class="thumbnail-image">
 								<img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $option_product->get_name() ); ?>" />
 								<?php if ( $selected ) : ?>
@@ -108,7 +139,23 @@ uasort( $option_products, function( $a, $b ) {
 								<span class="thumbnail-name"><?php echo esc_html( $option_product->get_name() ); ?></span>
 								<span class="thumbnail-price" data-relative-price="<?php echo esc_attr( $relative_price ); ?>"><?php echo wp_kses_post( $relative_price_formatted ); ?></span>
 							</div>
-						</label>
+							<?php if ( $has_quantity ) : ?>
+								<div class="w2f-pc-thumbnail-quantity" data-component-id="<?php echo esc_attr( $component_id ); ?>" data-product-id="<?php echo esc_attr( $option_product_id ); ?>">
+									<button type="button" class="w2f-pc-qty-btn w2f-pc-qty-minus" aria-label="<?php esc_attr_e( 'Decrease quantity', 'w2f-pc-configurator' ); ?>" <?php echo ( $default_quantity <= $min_quantity ) ? 'disabled' : ''; ?>>−</button>
+									<input type="number" 
+										   class="w2f-pc-qty-input" 
+										   value="<?php echo esc_attr( $default_quantity ); ?>" 
+										   min="<?php echo esc_attr( $min_quantity ); ?>" 
+										   max="<?php echo esc_attr( $max_quantity ); ?>"
+										   step="1"
+										   data-component-id="<?php echo esc_attr( $component_id ); ?>"
+										   data-product-id="<?php echo esc_attr( $option_product_id ); ?>"
+										   <?php echo ( $default_product_id !== $option_product_id ) ? 'disabled' : ''; ?>
+									/>
+									<button type="button" class="w2f-pc-qty-btn w2f-pc-qty-plus" aria-label="<?php esc_attr_e( 'Increase quantity', 'w2f-pc-configurator' ); ?>" <?php echo ( $default_quantity >= $max_quantity ) ? 'disabled' : ''; ?>>+</button>
+								</div>
+							<?php endif; ?>
+						</div>
 					<?php endforeach; ?>
 				</div>
 				<!-- Pagination Controls -->

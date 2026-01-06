@@ -211,7 +211,7 @@
 				}, 150);
 			});
 			
-			// Quantity input change.
+			// Quantity input change (for non-thumbnail quantity inputs).
 			$(document).on('change input', '.w2f-pc-quantity-input', function() {
 				var $input = $(this);
 				var componentId = $input.data('component-id');
@@ -228,7 +228,6 @@
 					$input.val(quantity);
 				}
 				
-				// Update quantities object.
 				self.currentQuantities[componentId] = quantity;
 				
 				// Only update if a product is selected for this component.
@@ -239,6 +238,91 @@
 						self.updateConfiguration(componentId);
 					}, 150);
 				}
+			});
+
+			// Thumbnail quantity button handlers.
+			$(document).on('click', '.w2f-pc-qty-btn', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				
+				var $button = $(this);
+				var $wrapper = $button.closest('.w2f-pc-thumbnail-quantity');
+				var $input = $wrapper.find('.w2f-pc-qty-input');
+				
+				// Don't proceed if input is disabled.
+				if ($input.prop('disabled')) {
+					return false;
+				}
+				
+				var minQuantity = parseInt($input.attr('min')) || 1;
+				var maxQuantity = parseInt($input.attr('max')) || 99;
+				var currentQuantity = parseInt($input.val()) || minQuantity;
+				var newQuantity = currentQuantity;
+				
+				if ($button.hasClass('w2f-pc-qty-plus')) {
+					newQuantity = Math.min(currentQuantity + 1, maxQuantity);
+				} else if ($button.hasClass('w2f-pc-qty-minus')) {
+					newQuantity = Math.max(currentQuantity - 1, minQuantity);
+				}
+				
+				if (newQuantity !== currentQuantity) {
+					$input.val(newQuantity);
+					self.updateQuantityButtonStates($wrapper, newQuantity, minQuantity, maxQuantity);
+					
+					// Update currentQuantities.
+					var componentId = $input.data('component-id');
+					self.currentQuantities[componentId] = newQuantity;
+					
+					// Trigger update.
+					clearTimeout(self.updateTimeout);
+					self.updateTimeout = setTimeout(function() {
+						self.updateConfiguration(componentId);
+					}, 150);
+				}
+				
+				return false;
+			});
+			
+			// Quantity input change handler.
+			$(document).on('change input', '.w2f-pc-qty-input', function(e) {
+				e.stopPropagation();
+				
+				var $input = $(this);
+				var $wrapper = $input.closest('.w2f-pc-thumbnail-quantity');
+				var minQuantity = parseInt($input.attr('min')) || 1;
+				var maxQuantity = parseInt($input.attr('max')) || 99;
+				var quantity = parseInt($input.val()) || minQuantity;
+				
+				// Validate.
+				if (quantity < minQuantity) {
+					quantity = minQuantity;
+					$input.val(quantity);
+				} else if (quantity > maxQuantity) {
+					quantity = maxQuantity;
+					$input.val(quantity);
+				}
+				
+				self.updateQuantityButtonStates($wrapper, quantity, minQuantity, maxQuantity);
+				
+				// Update currentQuantities.
+				var componentId = $input.data('component-id');
+				var productId = parseInt($input.data('product-id'));
+				
+				// Only update if this product is selected.
+				if (self.currentConfiguration[componentId] === productId) {
+					self.currentQuantities[componentId] = quantity;
+					
+					// Trigger update.
+					clearTimeout(self.updateTimeout);
+					self.updateTimeout = setTimeout(function() {
+						self.updateConfiguration(componentId);
+					}, 150);
+				}
+			});
+			
+			// Prevent card selection when clicking on quantity controls.
+			$(document).on('click', '.w2f-pc-thumbnail-quantity', function(e) {
+				e.stopPropagation();
 			});
 
 			// Custom dropdown toggle.
@@ -378,12 +462,42 @@
 				}
 			});
 
+			// Thumbnail card click handler - select when clicking anywhere except quantity controls.
+			$(document).on('click', '.w2f-pc-thumbnail-card', function(e) {
+				// Ignore clicks on quantity controls.
+				if ($(e.target).closest('.w2f-pc-thumbnail-quantity').length) {
+					return;
+				}
+				// Ignore clicks on quick view button.
+				if ($(e.target).closest('.w2f-pc-quick-view').length) {
+					return;
+				}
+				
+				var $card = $(this);
+				var $radio = $card.find('.component-select-radio');
+				
+				// Set radio button and trigger change.
+				$radio.prop('checked', true).trigger('change');
+			});
+			
+			// Handle keyboard navigation for thumbnail cards.
+			$(document).on('keydown', '.w2f-pc-thumbnail-card', function(e) {
+				if (e.key === 'Enter' || e.key === ' ') {
+					// Ignore if focus is on quantity input.
+					if ($(e.target).is('.w2f-pc-qty-input')) {
+						return;
+					}
+					e.preventDefault();
+					$(this).find('.component-select-radio').prop('checked', true).trigger('change');
+				}
+			});
+
 			// Component selection change (thumbnail radio).
 			$(document).on('change', '.component-select-radio', function() {
 				var $radio = $(this);
 				var componentId = $radio.data('component-id');
 				var productId = $radio.val() ? parseInt($radio.val()) : 0;
-				var $option = $radio.closest('.w2f-pc-thumbnail-option');
+				var $card = $radio.closest('.w2f-pc-thumbnail-card');
 				
 				// Handle "None" option (value 0).
 				if (productId === 0 || productId === '0') {
@@ -406,7 +520,7 @@
 
 				// Update visual selection - remove selected class and hide all indicators immediately.
 				// Clear all selections in this specific component first.
-				$component.find('.w2f-pc-thumbnail-option').removeClass('selected');
+				$component.find('.w2f-pc-thumbnail-card').removeClass('selected');
 				$component.find('.selected-indicator').remove();
 				
 				// Only proceed if this radio is actually checked.
@@ -414,16 +528,16 @@
 					return;
 				}
 				
-				// Add selected class to new option and add indicator with animation.
-				$option.css('transform', 'scale(0.95)');
+				// Add selected class to new card and add indicator with animation.
+				$card.css('transform', 'scale(0.95)');
 				setTimeout(function() {
 					// Double-check this is still the selected option.
-					if ($radio.is(':checked') && $option.closest('.w2f-pc-component[data-component-id="' + componentId + '"]').length) {
-						$option.addClass('selected').css('transform', 'scale(1)');
+					if ($radio.is(':checked') && $card.closest('.w2f-pc-component[data-component-id="' + componentId + '"]').length) {
+						$card.addClass('selected').css('transform', 'scale(1)');
 						// Remove any existing indicator first.
-						$option.find('.selected-indicator').remove();
+						$card.find('.selected-indicator').remove();
 						var $indicator = $('<span class="selected-indicator">✓</span>').css('opacity', '0');
-						$option.find('.thumbnail-image').append($indicator);
+						$card.find('.thumbnail-image').append($indicator);
 						setTimeout(function() {
 							$indicator.css('opacity', '1');
 						}, 10);
@@ -434,6 +548,18 @@
 					self.currentConfiguration[componentId] = productId;
 				} else {
 					delete self.currentConfiguration[componentId];
+				}
+
+				// Enable/disable quantity inputs based on selection and sync quantity.
+				self.updateThumbnailQuantityInputs(componentId, productId);
+				
+				// Sync quantity value from input to currentQuantities if product is selected.
+				if (productId) {
+					var $selectedInput = $component.find('.w2f-pc-qty-input[data-product-id="' + productId + '"]');
+					if ($selectedInput.length) {
+						var quantity = parseInt($selectedInput.val()) || 1;
+						self.currentQuantities[componentId] = quantity;
+					}
 				}
 
 				// Debounce updates to prevent excessive AJAX calls.
@@ -594,22 +720,22 @@
 				var $wrapper = $(this);
 				var componentId = $wrapper.data('component-id');
 				var $grid = $wrapper.find('.w2f-pc-thumbnail-grid');
-				var $options = $grid.find('.w2f-pc-thumbnail-option');
+				var $cards = $grid.find('.w2f-pc-thumbnail-card');
 				var $pagination = $wrapper.find('.w2f-pc-thumbnail-pagination');
 				var $prevBtn = $pagination.find('.w2f-pc-pagination-prev');
 				var $nextBtn = $pagination.find('.w2f-pc-pagination-next');
 				var $currentSpan = $pagination.find('.w2f-pc-pagination-current');
 				var $totalSpan = $pagination.find('.w2f-pc-pagination-total');
 				
-				var totalItems = $options.length;
+				var totalItems = $cards.length;
 				var itemsPerPage = self.getItemsPerPage($wrapper);
 				var totalPages = Math.ceil(totalItems / itemsPerPage);
 				
 				// Find selected item to determine initial page.
-				var $selected = $grid.find('.w2f-pc-thumbnail-option.selected');
+				var $selected = $grid.find('.w2f-pc-thumbnail-card.selected');
 				var initialPage = 1;
 				if ($selected.length) {
-					var selectedIndex = $options.index($selected);
+					var selectedIndex = $cards.index($selected);
 					initialPage = Math.floor(selectedIndex / itemsPerPage) + 1;
 				}
 				
@@ -625,7 +751,7 @@
 				} else {
 					$pagination.hide();
 					// Show all items if only one page.
-					$options.addClass('w2f-pc-thumbnail-visible');
+					$cards.addClass('w2f-pc-thumbnail-visible');
 				}
 			});
 		},
@@ -639,21 +765,21 @@
 			var totalPages = $wrapper.data('total-pages') || 1;
 			var itemsPerPage = $wrapper.data('items-per-page') || 12;
 			var $grid = $wrapper.find('.w2f-pc-thumbnail-grid');
-			var $options = $grid.find('.w2f-pc-thumbnail-option');
+			var $cards = $grid.find('.w2f-pc-thumbnail-card');
 			var $pagination = $wrapper.find('.w2f-pc-thumbnail-pagination');
 			var $prevBtn = $pagination.find('.w2f-pc-pagination-prev');
 			var $nextBtn = $pagination.find('.w2f-pc-pagination-next');
 			var $currentSpan = $pagination.find('.w2f-pc-pagination-current');
 			var $totalSpan = $pagination.find('.w2f-pc-pagination-total');
 			
-			// Hide all options.
-			$options.removeClass('w2f-pc-thumbnail-visible');
+			// Hide all cards.
+			$cards.removeClass('w2f-pc-thumbnail-visible');
 			
-			// Show options for current page.
+			// Show cards for current page.
 			var startIndex = (currentPage - 1) * itemsPerPage;
 			var endIndex = startIndex + itemsPerPage;
 			
-			$options.slice(startIndex, endIndex).addClass('w2f-pc-thumbnail-visible');
+			$cards.slice(startIndex, endIndex).addClass('w2f-pc-thumbnail-visible');
 			
 			// Update pagination info.
 			$currentSpan.text(currentPage);
@@ -796,6 +922,11 @@
 				// Handle thumbnail radio buttons.
 				var $radio = $('.component-select-radio[data-component-id="' + componentId + '"][value="' + productId + '"]');
 				var $component = self.domCache.components[componentId] || $('.w2f-pc-component[data-component-id="' + componentId + '"]');
+				
+				// Initialize thumbnail quantity inputs.
+				if ($component.length) {
+					self.updateThumbnailQuantityInputs(componentId, productId);
+				}
 				
 				// First, remove selected class and indicators from all options in this component.
 				$component.find('.w2f-pc-thumbnail-option').removeClass('selected');
@@ -2202,10 +2333,29 @@
 				);
 			});
 			
-			// Add quantities as hidden fields.
+			// Add quantities as hidden fields - handle both regular and thumbnail quantity inputs.
 			$.each(this.currentQuantities, function(componentId, quantity) {
 				// Only add quantity if a product is selected for this component.
 				if (self.currentConfiguration[componentId]) {
+					$('form.w2f-pc-configurator-form, form.cart').append(
+						$('<input>').attr({
+							type: 'hidden',
+							name: 'w2f_pc_configuration_quantity[' + componentId + ']',
+							value: quantity
+						})
+					);
+				}
+			});
+			
+			// Also collect thumbnail quantity inputs.
+			$('.w2f-pc-qty-input:not(:disabled)').each(function() {
+				var $input = $(this);
+				var componentId = $input.data('component-id');
+				var productId = parseInt($input.data('product-id'));
+				var quantity = parseInt($input.val()) || 1;
+				
+				// Only add if this product is selected for this component.
+				if (self.currentConfiguration[componentId] === productId) {
 					$('form.w2f-pc-configurator-form, form.cart').append(
 						$('<input>').attr({
 							type: 'hidden',
@@ -2232,6 +2382,40 @@
 			setTimeout(function() {
 				$button.prop('disabled', false).text(originalText);
 			}, 1000);
+		},
+
+		updateThumbnailQuantityInputs: function(componentId, selectedProductId) {
+			var self = this;
+			var $component = $('.w2f-pc-component[data-component-id="' + componentId + '"]');
+			var $quantityInputs = $component.find('.w2f-pc-qty-input');
+			
+			$quantityInputs.each(function() {
+				var $input = $(this);
+				var productId = parseInt($input.data('product-id'));
+				var isSelected = (selectedProductId === productId);
+				
+				$input.prop('disabled', !isSelected);
+				
+				// Update button states.
+				var $wrapper = $input.closest('.w2f-pc-thumbnail-quantity');
+				var minQuantity = parseInt($input.attr('min')) || 1;
+				var maxQuantity = parseInt($input.attr('max')) || 99;
+				var quantity = parseInt($input.val()) || minQuantity;
+				
+				if (isSelected) {
+					self.updateQuantityButtonStates($wrapper, quantity, minQuantity, maxQuantity);
+				} else {
+					$wrapper.find('.w2f-pc-qty-minus, .w2f-pc-qty-plus').prop('disabled', true);
+				}
+			});
+		},
+
+		updateQuantityButtonStates: function($wrapper, quantity, minQuantity, maxQuantity) {
+			var $minusBtn = $wrapper.find('.w2f-pc-qty-minus');
+			var $plusBtn = $wrapper.find('.w2f-pc-qty-plus');
+			
+			$minusBtn.prop('disabled', quantity <= minQuantity);
+			$plusBtn.prop('disabled', quantity >= maxQuantity);
 		},
 
 		closeModal: function() {

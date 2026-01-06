@@ -27,6 +27,13 @@ class W2F_PC_Cart {
 	protected static $_instance = null;
 
 	/**
+	 * Static flag to prevent infinite recursion.
+	 *
+	 * @var bool
+	 */
+	protected static $processing_components = false;
+
+	/**
 	 * Main W2F_PC_Cart instance.
 	 *
 	 * @static
@@ -68,7 +75,10 @@ class W2F_PC_Cart {
 		
 		// Add component products as separate line items for ERP integration.
 		// Use priority 5 to run before other hooks and ensure main product is set to £0 before item is added.
-		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_component_line_items' ), 5, 4 );
+		// Only register hook if not in admin (to prevent memory issues when viewing products).
+		if ( ! is_admin() || wp_doing_ajax() ) {
+			add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_component_line_items' ), 5, 4 );
+		}
 
 		// Display configuration in order details.
 		add_filter( 'woocommerce_order_item_name', array( $this, 'order_item_name' ), 10, 2 );
@@ -519,6 +529,26 @@ class W2F_PC_Cart {
 	 * @param  WC_Order              $order
 	 */
 	public function add_component_line_items( $item, $cart_item_key, $values, $order ) {
+		// Only run during checkout, not in admin or other contexts.
+		if ( is_admin() && ! wp_doing_ajax() ) {
+			return;
+		}
+
+		// Must have valid cart item key (only exists during checkout).
+		if ( empty( $cart_item_key ) ) {
+			return;
+		}
+
+		// Prevent infinite loop - don't process items we're adding (component items).
+		if ( $item->get_meta( '_w2f_pc_is_child_item' ) === 'yes' || $item->get_meta( '_w2f_pc_is_component' ) === 'yes' ) {
+			return;
+		}
+
+		// Prevent infinite recursion with static flag.
+		if ( self::$processing_components ) {
+			return;
+		}
+
 		if ( ! isset( $values['w2f_pc_configuration'] ) ) {
 			return;
 		}
@@ -527,6 +557,9 @@ class W2F_PC_Cart {
 		if ( ! w2f_pc_is_configurator_product( $product ) ) {
 			return;
 		}
+
+		// Set flag to prevent recursion.
+		self::$processing_components = true;
 
 		$configurator_product = w2f_pc_get_configurator_product( $product );
 		$configuration = $values['w2f_pc_configuration'];
@@ -671,6 +704,9 @@ class W2F_PC_Cart {
 			// Add the component item to the order.
 			$order->add_item( $component_item );
 		}
+
+		// Reset flag after adding all component items.
+		self::$processing_components = false;
 
 		// Calculate final total (sum of all component prices after discount if default).
 		// This is for reference only - main product stays at £0, components have all pricing.
