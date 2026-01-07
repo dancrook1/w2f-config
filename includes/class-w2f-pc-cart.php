@@ -34,6 +34,13 @@ class W2F_PC_Cart {
 	protected static $processing_components = false;
 
 	/**
+	 * Cache for parent-children relationships in admin.
+	 *
+	 * @var array
+	 */
+	protected $parent_children_cache = array();
+
+	/**
 	 * Main W2F_PC_Cart instance.
 	 *
 	 * @static
@@ -94,11 +101,31 @@ class W2F_PC_Cart {
 		// Style component items as child items (indented).
 		add_filter( 'woocommerce_order_item_class', array( $this, 'order_item_class' ), 10, 2 );
 
+		// Reorder order items to nest components under parent products.
+		add_filter( 'woocommerce_order_get_items', array( $this, 'reorder_order_items' ), 10, 2 );
+		
+		// Hide child items from main table in admin (they'll be shown in nested table).
+		// Using output buffering approach instead of filtering items.
+		add_action( 'woocommerce_admin_order_items_after_line_items', array( $this, 'hide_child_items_with_css' ), 5 );
+
+		// Add nested table structure for components in admin.
+		add_action( 'woocommerce_before_order_item_line_item_html', array( $this, 'before_order_item_html' ), 10, 3 );
+		add_action( 'woocommerce_order_item_line_item_html', array( $this, 'after_order_item_html' ), 10, 3 );
+
+		// Add data attributes for visual grouping in admin.
+		add_filter( 'woocommerce_admin_html_order_item_class', array( $this, 'admin_order_item_class' ), 10, 3 );
+
+		// Hide subtotal row from order totals on frontend.
+		add_filter( 'woocommerce_get_order_item_totals', array( $this, 'hide_subtotal_from_order_totals' ), 10, 3 );
+
 		// Calculate cart item price.
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'calculate_cart_item_price' ), 10, 1 );
 		
 		// Ensure main product stays at £0 after order totals are calculated.
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'ensure_main_product_zero_price' ), 10, 1 );
+		
+		// Store system IDs on order for easy parsing.
+		add_action( 'woocommerce_checkout_order_created', array( $this, 'store_order_system_ids' ), 15, 1 );
 	}
 
 	/**
@@ -221,6 +248,18 @@ class W2F_PC_Cart {
 	}
 
 	/**
+	 * Generate a unique system ID for a PC configurator.
+	 *
+	 * @return string
+	 */
+	private function generate_system_id() {
+		// Generate a unique ID: timestamp + random string.
+		$timestamp = time();
+		$random = wp_generate_password( 8, false );
+		return 'PC-' . $timestamp . '-' . strtoupper( $random );
+	}
+
+	/**
 	 * Add configuration to cart item data.
 	 *
 	 * @param  array $cart_item_data
@@ -245,6 +284,11 @@ class W2F_PC_Cart {
 				}
 			}
 			$cart_item_data['w2f_pc_configuration'] = $configuration;
+			
+			// Generate and store unique system ID for this PC configuration.
+			if ( ! isset( $cart_item_data['w2f_pc_system_id'] ) ) {
+				$cart_item_data['w2f_pc_system_id'] = $this->generate_system_id();
+			}
 		}
 
 		// Process quantities.
@@ -273,6 +317,13 @@ class W2F_PC_Cart {
 		}
 		if ( isset( $values['w2f_pc_configuration_quantities'] ) ) {
 			$cart_item['w2f_pc_configuration_quantities'] = $values['w2f_pc_configuration_quantities'];
+		}
+		// Preserve system ID from session.
+		if ( isset( $values['w2f_pc_system_id'] ) ) {
+			$cart_item['w2f_pc_system_id'] = $values['w2f_pc_system_id'];
+		} elseif ( isset( $cart_item['w2f_pc_configuration'] ) && ! isset( $cart_item['w2f_pc_system_id'] ) ) {
+			// Generate system ID if missing (for legacy cart items).
+			$cart_item['w2f_pc_system_id'] = $this->generate_system_id();
 		}
 		return $cart_item;
 	}
@@ -388,6 +439,15 @@ class W2F_PC_Cart {
 		$configurator_product = w2f_pc_get_configurator_product( $product );
 		$configuration = $values['w2f_pc_configuration'];
 		$quantities = isset( $values['w2f_pc_configuration_quantities'] ) ? $values['w2f_pc_configuration_quantities'] : array();
+		
+		// System ID is already set in add_component_line_items (priority 5) which runs before this.
+		// Just ensure it exists, otherwise get from cart item data or generate.
+		$system_id = $item->get_meta( '_w2f_pc_system_id' );
+		if ( ! $system_id ) {
+			$system_id = isset( $values['w2f_pc_system_id'] ) ? $values['w2f_pc_system_id'] : $this->generate_system_id();
+			$item->add_meta_data( '_w2f_pc_system_id', $system_id );
+			$item->add_meta_data( __( 'System ID', 'w2f-pc-configurator' ), $system_id );
+		}
 
 		// Store configuration as order item meta (for reference, but components are now separate line items).
 		$item->add_meta_data( '_w2f_pc_configuration', $configuration );
@@ -445,6 +505,400 @@ class W2F_PC_Cart {
 		}
 		
 		return $name;
+	}
+
+	/**
+	 * Reorder order items to nest components under parent products.
+	 *
+	 * @param  array    $items
+	 * @param  WC_Order $order
+	 * @return array
+	 */
+	public function reorder_order_items( $items, $order ) {
+		if ( empty( $items ) ) {
+			return $items;
+		}
+
+		$reordered_items = array();
+		$parent_items = array();
+		$child_items = array();
+		$other_items = array();
+
+		// Separate items into parent, child, and other categories.
+		foreach ( $items as $item_id => $item ) {
+			if ( ! is_a( $item, 'WC_Order_Item_Product' ) ) {
+				$other_items[ $item_id ] = $item;
+				continue;
+			}
+
+			// Check if this is a parent configurator product.
+			if ( $item->get_meta( '_w2f_pc_is_configurator' ) === 'yes' && $item->get_meta( '_w2f_pc_has_components' ) === 'yes' ) {
+				$parent_items[ $item_id ] = $item;
+			}
+			// Check if this is a child component.
+			elseif ( $item->get_meta( '_w2f_pc_is_child_item' ) === 'yes' || $item->get_meta( '_w2f_pc_is_component' ) === 'yes' ) {
+				$configurator_product_id = $item->get_meta( '_w2f_pc_configurator_product_id' );
+				if ( $configurator_product_id ) {
+					$child_items[ $configurator_product_id ][ $item_id ] = $item;
+				} else {
+					$other_items[ $item_id ] = $item;
+				}
+			} else {
+				$other_items[ $item_id ] = $item;
+			}
+		}
+
+		// Build reordered array: parent items first, then their children, then other items.
+		foreach ( $parent_items as $parent_item_id => $parent_item ) {
+			// Add parent item.
+			$reordered_items[ $parent_item_id ] = $parent_item;
+
+			// Add children of this parent.
+			if ( isset( $child_items[ $parent_item->get_product_id() ] ) ) {
+				foreach ( $child_items[ $parent_item->get_product_id() ] as $child_item_id => $child_item ) {
+					$reordered_items[ $child_item_id ] = $child_item;
+				}
+			}
+		}
+
+		// Add remaining other items.
+		foreach ( $other_items as $item_id => $item ) {
+			$reordered_items[ $item_id ] = $item;
+		}
+
+		return $reordered_items;
+	}
+
+	/**
+	 * Hide child items with CSS in admin (they're shown in nested table instead).
+	 * This is called after line items are rendered.
+	 *
+	 * @param  int $order_id
+	 */
+	public function hide_child_items_with_css( $order_id ) {
+		// Only in admin.
+		if ( ! is_admin() || wp_doing_ajax() ) {
+			return;
+		}
+
+		// Add CSS to hide child items in main table (they're shown in nested table).
+		echo '<style>
+			.woocommerce_order_items .w2f-pc-group-child,
+			.woocommerce_order_items tr.item.w2f-pc-child-item {
+				display: none !important;
+			}
+		</style>';
+	}
+
+	/**
+	 * Add nested table structure before parent item HTML in admin.
+	 *
+	 * @param  int       $item_id
+	 * @param  WC_Order_Item_Product $item
+	 * @param  WC_Order  $order
+	 */
+	public function before_order_item_html( $item_id, $item, $order ) {
+		// Only in admin.
+		if ( ! is_admin() || wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( ! is_a( $item, 'WC_Order_Item_Product' ) ) {
+			return;
+		}
+
+		// Check if this is a parent configurator product with children.
+		if ( $item->get_meta( '_w2f_pc_is_configurator' ) === 'yes' && $item->get_meta( '_w2f_pc_has_components' ) === 'yes' ) {
+			// Get all children for this parent.
+			$items = $order->get_items();
+			$parent_product_id = $item->get_product_id();
+			$child_items = array();
+			
+			foreach ( $items as $check_item_id => $check_item ) {
+				if ( is_a( $check_item, 'WC_Order_Item_Product' ) ) {
+					$check_configurator_id = $check_item->get_meta( '_w2f_pc_configurator_product_id' );
+					if ( $check_configurator_id == $parent_product_id && $check_item->get_meta( '_w2f_pc_is_child_item' ) === 'yes' ) {
+						$child_items[ $check_item_id ] = $check_item;
+					}
+				}
+			}
+
+			// Store children for later rendering.
+			if ( ! empty( $child_items ) ) {
+				$this->parent_children_cache[ $item_id ] = $child_items;
+			}
+		}
+	}
+
+	/**
+	 * Add nested table structure after parent item HTML in admin.
+	 *
+	 * @param  int       $item_id
+	 * @param  WC_Order_Item_Product $item
+	 * @param  WC_Order  $order
+	 */
+	public function after_order_item_html( $item_id, $item, $order ) {
+		// Only in admin.
+		if ( ! is_admin() || wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( ! is_a( $item, 'WC_Order_Item_Product' ) ) {
+			return;
+		}
+
+		// Check if this is a parent configurator product with children.
+		if ( $item->get_meta( '_w2f_pc_is_configurator' ) === 'yes' && $item->get_meta( '_w2f_pc_has_components' ) === 'yes' ) {
+			if ( isset( $this->parent_children_cache[ $item_id ] ) && ! empty( $this->parent_children_cache[ $item_id ] ) ) {
+				$child_items = $this->parent_children_cache[ $item_id ];
+				
+				// Count table columns to determine colspan.
+				$order_taxes = $order->get_taxes();
+				$tax_column_count = count( $order_taxes );
+				$cogs_enabled = class_exists( '\Automattic\WooCommerce\Internal\CostOfGoodsSold\CostOfGoodsSoldController' ) && 
+				                 wc_get_container()->get( \Automattic\WooCommerce\Internal\CostOfGoodsSold\CostOfGoodsSoldController::class )->feature_is_enabled();
+				$colspan = 2 + ( $cogs_enabled ? 1 : 0 ) + 3 + $tax_column_count + 1; // Item (2 cols), COGS (1), Price/Qty/Total (3), Tax columns, Actions (1)
+				
+				// Output nested table row.
+				echo '<tr class="w2f-pc-components-row"><td colspan="' . esc_attr( $colspan ) . '" class="w2f-pc-components-cell" style="padding: 0;">';
+				echo '<table class="w2f-pc-components-table" cellpadding="0" cellspacing="0" style="width: 100%; margin: 0; background: #f9f9f9;">';
+				
+				// Render each child item.
+				foreach ( $child_items as $child_item_id => $child_item ) {
+					$this->render_child_item_row( $child_item_id, $child_item, $order );
+				}
+				
+				echo '</table>';
+				echo '</td></tr>';
+				
+				// Clear cache.
+				unset( $this->parent_children_cache[ $item_id ] );
+			}
+		}
+	}
+
+	/**
+	 * Render a child item row in the nested table.
+	 *
+	 * @param  int       $item_id
+	 * @param  WC_Order_Item_Product $item
+	 * @param  WC_Order  $order
+	 */
+	private function render_child_item_row( $item_id, $item, $order ) {
+		$product = $item->get_product();
+		$product_link = $product ? admin_url( 'post.php?post=' . $item->get_product_id() . '&action=edit' ) : '';
+		$thumbnail = $product ? apply_filters( 'woocommerce_admin_order_item_thumbnail', $product->get_image( 'thumbnail', array( 'title' => '' ), false ), $item_id, $item ) : '';
+		$item_name = apply_filters( 'woocommerce_order_item_name', $item->get_name(), $item, $product ? $product->is_visible() : false );
+		
+		$order_taxes = $order->get_taxes();
+		$cogs_enabled = class_exists( '\Automattic\WooCommerce\Internal\CostOfGoodsSold\CostOfGoodsSoldController' ) && 
+		                 wc_get_container()->get( \Automattic\WooCommerce\Internal\CostOfGoodsSold\CostOfGoodsSoldController::class )->feature_is_enabled();
+		
+		echo '<tr class="item w2f-pc-nested-child-item" data-order_item_id="' . esc_attr( $item_id ) . '">';
+		
+		// Thumbnail column.
+		echo '<td class="thumb" style="width: 50px; padding: 8px;">';
+		echo '<div class="wc-order-item-thumbnail">' . wp_kses_post( $thumbnail ) . '</div>';
+		echo '</td>';
+		
+		// Name column.
+		echo '<td class="name" style="padding: 8px;">';
+		echo $product_link ? '<a href="' . esc_url( $product_link ) . '" class="wc-order-item-name">' . wp_kses_post( $item_name ) . '</a>' : '<div class="wc-order-item-name">' . wp_kses_post( $item_name ) . '</div>';
+		
+		if ( $product && $product->get_sku() ) {
+			echo '<div class="wc-order-item-sku"><strong>' . esc_html__( 'SKU:', 'woocommerce' ) . '</strong> ' . esc_html( $product->get_sku() ) . '</div>';
+		}
+		
+		if ( $item->get_variation_id() ) {
+			echo '<div class="wc-order-item-variation"><strong>' . esc_html__( 'Variation ID:', 'woocommerce' ) . '</strong> ';
+			if ( 'product_variation' === get_post_type( $item->get_variation_id() ) ) {
+				echo esc_html( $item->get_variation_id() );
+			} else {
+				/* translators: %s: variation id */
+				printf( esc_html__( '%s (No longer exists)', 'woocommerce' ), esc_html( $item->get_variation_id() ) );
+			}
+			echo '</div>';
+		}
+		
+		echo '<input type="hidden" class="order_item_id" name="order_item_id[]" value="' . esc_attr( $item_id ) . '" />';
+		echo '<input type="hidden" name="order_item_tax_class[' . absint( $item_id ) . ']" value="' . esc_attr( $item->get_tax_class() ) . '" />';
+		
+		do_action( 'woocommerce_before_order_itemmeta', $item_id, $item, $product );
+		
+		// Include the admin meta template.
+		$meta_template = WC()->plugin_path() . '/includes/admin/meta-boxes/views/html-order-item-meta.php';
+		if ( file_exists( $meta_template ) ) {
+			include $meta_template;
+		} else {
+			// Fallback to wc_display_item_meta if template doesn't exist.
+			wc_display_item_meta( $item );
+		}
+		
+		do_action( 'woocommerce_after_order_itemmeta', $item_id, $item, $product );
+		
+		echo '</td>';
+		
+		// Allow other plugins to add columns.
+		do_action( 'woocommerce_admin_order_item_values', $product, $item, absint( $item_id ) );
+		
+		// COGS column (if enabled).
+		if ( $cogs_enabled ) {
+			echo '<td class="item_cost_of_goods" style="padding: 8px;">';
+			echo '</td>';
+		}
+		
+		// Price column.
+		echo '<td class="item_cost" style="padding: 8px;">';
+		echo '<div class="view">';
+		echo wc_price( $item->get_subtotal() / max( 1, $item->get_quantity() ), array( 'currency' => $order->get_currency() ) );
+		echo '</div>';
+		echo '</td>';
+		
+		// Quantity column.
+		echo '<td class="quantity" style="padding: 8px;">';
+		echo '<div class="view">';
+		echo esc_html( $item->get_quantity() );
+		echo '</div>';
+		echo '</td>';
+		
+		// Total column.
+		echo '<td class="line_cost" style="padding: 8px;">';
+		echo '<div class="view">';
+		echo wc_price( $item->get_subtotal(), array( 'currency' => $order->get_currency() ) );
+		echo '</div>';
+		echo '</td>';
+		
+		// Tax columns.
+		if ( ! empty( $order_taxes ) ) {
+			foreach ( $order_taxes as $tax_id => $tax_item ) {
+				echo '<td class="line_tax" style="padding: 8px;">';
+				echo '<div class="view">';
+				$tax_amount = $item->get_taxes();
+				if ( isset( $tax_amount['total'][ $tax_id ] ) ) {
+					echo wc_price( wc_round_tax_total( $tax_amount['total'][ $tax_id ] ), array( 'currency' => $order->get_currency() ) );
+				} else {
+					echo '&ndash;';
+				}
+				echo '</div>';
+				echo '</td>';
+			}
+		}
+		
+		// Actions column.
+		echo '<td class="wc-order-edit-line-item" style="padding: 8px;">';
+		echo '</td>';
+		
+		echo '</tr>';
+	}
+
+	/**
+	 * Hide subtotal row from order totals on frontend (display only).
+	 * Does NOT affect price calculations - only removes the row from display.
+	 *
+	 * @param  array    $total_rows
+	 * @param  WC_Order $order
+	 * @param  string   $tax_display
+	 * @return array
+	 */
+	public function hide_subtotal_from_order_totals( $total_rows, $order, $tax_display ) {
+		// Only hide on frontend, not in admin.
+		if ( is_admin() && ! wp_doing_ajax() ) {
+			return $total_rows;
+		}
+
+		// Remove subtotal row from display array (display only - does not affect calculations).
+		unset( $total_rows['cart_subtotal'] );
+
+		return $total_rows;
+	}
+
+	/**
+	 * Add data attributes and classes for visual grouping in admin.
+	 *
+	 * @param  string                $class
+	 * @param  WC_Order_Item_Product $item
+	 * @param  WC_Order              $order
+	 * @return string
+	 */
+	public function admin_order_item_class( $class, $item, $order ) {
+		// Only in admin.
+		if ( ! is_admin() || wp_doing_ajax() ) {
+			return $class;
+		}
+
+		if ( ! is_a( $item, 'WC_Order_Item_Product' ) ) {
+			return $class;
+		}
+
+		// Check if this is a parent configurator product.
+		if ( $item->get_meta( '_w2f_pc_is_configurator' ) === 'yes' && $item->get_meta( '_w2f_pc_has_components' ) === 'yes' ) {
+			$class .= ' w2f-pc-group-parent';
+			
+			// Check if this parent has children.
+			$items = $order->get_items();
+			$parent_product_id = $item->get_product_id();
+			$has_children = false;
+			
+			foreach ( $items as $check_item ) {
+				if ( is_a( $check_item, 'WC_Order_Item_Product' ) ) {
+					$check_configurator_id = $check_item->get_meta( '_w2f_pc_configurator_product_id' );
+					if ( $check_configurator_id == $parent_product_id && $check_item->get_meta( '_w2f_pc_is_child_item' ) === 'yes' ) {
+						$has_children = true;
+						break;
+					}
+				}
+			}
+
+			if ( $has_children ) {
+				$class .= ' w2f-pc-has-children';
+			}
+		}
+		// Check if this is a child component.
+		elseif ( $item->get_meta( '_w2f_pc_is_child_item' ) === 'yes' || $item->get_meta( '_w2f_pc_is_component' ) === 'yes' ) {
+			$class .= ' w2f-pc-group-child';
+			$configurator_product_id = $item->get_meta( '_w2f_pc_configurator_product_id' );
+			if ( $configurator_product_id ) {
+				$class .= ' w2f-pc-parent-' . esc_attr( $configurator_product_id );
+			}
+			
+			// Check if this is the last child of its parent by checking items after this one.
+			$items = $order->get_items();
+			$current_item_id = $item->get_id();
+			$is_last_child = true;
+			$found_current = false;
+			
+			foreach ( $items as $check_item_id => $check_item ) {
+				if ( ! is_a( $check_item, 'WC_Order_Item_Product' ) ) {
+					continue;
+				}
+				
+				// Find current item first.
+				if ( ! $found_current ) {
+					if ( $check_item_id == $current_item_id ) {
+						$found_current = true;
+					}
+					continue;
+				}
+				
+				// Now check items after current.
+				$check_configurator_id = $check_item->get_meta( '_w2f_pc_configurator_product_id' );
+				// If next item is also a child of the same parent, this is not the last child.
+				if ( $check_configurator_id == $configurator_product_id && $check_item->get_meta( '_w2f_pc_is_child_item' ) === 'yes' ) {
+					$is_last_child = false;
+					break;
+				}
+				// If next item is not a child of this parent, we've reached the end of this group.
+				if ( $check_configurator_id != $configurator_product_id ) {
+					break;
+				}
+			}
+
+			if ( $is_last_child ) {
+				$class .= ' w2f-pc-last-child';
+			}
+		}
+
+		return $class;
 	}
 
 	/**
@@ -575,6 +1029,15 @@ class W2F_PC_Cart {
 				$configuration['warranty'] = $default_warranty;
 			}
 		}
+
+		// Get or generate system ID for this PC configuration (from cart item data).
+		// This must be done here (priority 5) before add_order_item_meta (priority 10).
+		// The same system ID will be used for the parent and all child components.
+		$system_id = isset( $values['w2f_pc_system_id'] ) ? $values['w2f_pc_system_id'] : $this->generate_system_id();
+		
+		// Store system ID on parent item first (before children are created).
+		$item->add_meta_data( '_w2f_pc_system_id', $system_id );
+		$item->add_meta_data( __( 'System ID', 'w2f-pc-configurator' ), $system_id );
 
 		// Mark the main configurator product item.
 		$item->add_meta_data( '_w2f_pc_is_configurator', 'yes' );
@@ -713,12 +1176,19 @@ class W2F_PC_Cart {
 				$component_item->set_order_id( $order->get_id() );
 			}
 
+			// Use the same system ID that was set on the parent item above.
+			// The $system_id variable is already set at the beginning of this method.
+			// This ensures all components share the exact same system ID as the parent.
+			
 			// Add meta to identify this as a component (child item) of the configurator.
 			$component_item->add_meta_data( '_w2f_pc_is_component', 'yes' );
 			$component_item->add_meta_data( '_w2f_pc_is_child_item', 'yes' );
 			$component_item->add_meta_data( '_w2f_pc_configurator_product_id', $product->get_id() );
 			$component_item->add_meta_data( '_w2f_pc_component_id', $component_id );
 			$component_item->add_meta_data( '_w2f_pc_component_title', $component->get_title() );
+			
+			// Store the same system ID on component items (same as parent).
+			$component_item->add_meta_data( '_w2f_pc_system_id', $system_id );
 
 			// Add the component item to the order.
 			$order->add_item( $component_item );
@@ -737,6 +1207,7 @@ class W2F_PC_Cart {
 
 	/**
 	 * Hide component price in order line subtotal (frontend only).
+	 * Display-only filter - does NOT affect price calculations.
 	 *
 	 * @param  string                $subtotal
 	 * @param  WC_Order_Item_Product $item
@@ -748,9 +1219,14 @@ class W2F_PC_Cart {
 			return $subtotal;
 		}
 		
-		// Check if this is a component item.
+		// Hide subtotals for component items.
 		if ( $item->get_meta( '_w2f_pc_is_component' ) === 'yes' ) {
-			return ''; // Hide price from frontend.
+			return ''; // Hide price from frontend (display only).
+		}
+		
+		// Hide subtotals for parent configurator products.
+		if ( $item->get_meta( '_w2f_pc_is_configurator' ) === 'yes' && $item->get_meta( '_w2f_pc_has_components' ) === 'yes' ) {
+			return ''; // Hide price from frontend (display only).
 		}
 		
 		return $subtotal;
@@ -807,6 +1283,37 @@ class W2F_PC_Cart {
 			// Set both price and regular_price so WooCommerce can calculate totals correctly.
 			$product->set_price( max( 0, $price ) );
 			$product->set_regular_price( max( 0, $price ) );
+		}
+	}
+
+	/**
+	 * Store all system IDs on the order for easy parsing.
+	 *
+	 * @param WC_Order $order The order object.
+	 */
+	public function store_order_system_ids( $order ) {
+		if ( ! $order ) {
+			return;
+		}
+
+		$system_ids = array();
+		
+		// Collect all unique system IDs from configurator products.
+		foreach ( $order->get_items() as $item_id => $item ) {
+			if ( ! is_a( $item, 'WC_Order_Item_Product' ) ) {
+				continue;
+			}
+			
+			$system_id = $item->get_meta( '_w2f_pc_system_id' );
+			if ( $system_id && ! in_array( $system_id, $system_ids, true ) ) {
+				$system_ids[] = $system_id;
+			}
+		}
+		
+		// Store system IDs on order meta for easy access.
+		if ( ! empty( $system_ids ) ) {
+			$order->update_meta_data( '_w2f_pc_system_ids', $system_ids );
+			$order->save();
 		}
 	}
 

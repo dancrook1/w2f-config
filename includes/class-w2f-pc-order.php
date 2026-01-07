@@ -66,39 +66,15 @@ class W2F_PC_Order {
 
 	/**
 	 * Display configuration in order item name.
+	 * Note: Configuration is no longer displayed here since components are now separate line items.
 	 *
 	 * @param  string $name
 	 * @param  WC_Order_Item $item
 	 * @return string
 	 */
 	public function order_item_name( $name, $item ) {
-		if ( ! is_a( $item, 'WC_Order_Item_Product' ) ) {
-			return $name;
-		}
-
-		$configuration = $item->get_meta( '_w2f_pc_configuration' );
-		if ( empty( $configuration ) || ! is_array( $configuration ) ) {
-			return $name;
-		}
-
-		$product = $item->get_product();
-		if ( ! w2f_pc_is_configurator_product( $product ) ) {
-			return $name;
-		}
-
-		$configurator_product = w2f_pc_get_configurator_product( $product );
-
-		$name .= '<dl class="w2f_pc_configuration">';
-		foreach ( $configuration as $component_id => $product_id ) {
-			$component = $configurator_product->get_component( $component_id );
-			$selected_product = wc_get_product( $product_id );
-			if ( $component && $selected_product ) {
-				$name .= '<dt>' . esc_html( $component->get_title() ) . ':</dt>';
-				$name .= '<dd>' . esc_html( $selected_product->get_name() ) . '</dd>';
-			}
-		}
-		$name .= '</dl>';
-
+		// Configuration is now displayed as separate line items, so we don't show it here.
+		// This prevents duplicate/messy display of configuration data.
 		return $name;
 	}
 }
