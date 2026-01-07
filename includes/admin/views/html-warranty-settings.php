@@ -63,17 +63,17 @@ if ( isset( $_POST['w2f_pc_warranty_settings_save'] ) && check_admin_referer( 'w
 	echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Warranty settings saved.', 'w2f-pc-configurator' ) . '</p></div>';
 }
 ?>
-<div class="wrap">
+<div class="wrap w2f-pc-admin-page">
 	<h1><?php esc_html_e( 'Warranty Settings', 'w2f-pc-configurator' ); ?></h1>
 	
-	<div class="w2f-pc-warranty-settings" style="margin-top: 20px;">
+	<div class="w2f-pc-warranty-settings">
 	
 	<form method="post" action="">
 		<?php wp_nonce_field( 'w2f_pc_warranty_settings', 'w2f_pc_warranty_settings_nonce' ); ?>
 		
 		<!-- Price Brackets Section -->
-		<div class="w2f-pc-settings-section" style="background: #fff; border: 1px solid #ccd0d4; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-			<h3 style="margin-top: 0;"><?php esc_html_e( 'Base Warranty Price Brackets', 'w2f-pc-configurator' ); ?></h3>
+		<div class="w2f-pc-settings-section">
+			<h3><?php esc_html_e( 'Base Warranty Price Brackets', 'w2f-pc-configurator' ); ?></h3>
 			<p class="description">
 				<?php esc_html_e( 'Configure price brackets for base warranty cost. The base warranty cost is calculated based on the total configured PC price (sum of all components). All prices are excluding VAT.', 'w2f-pc-configurator' ); ?>
 			</p>
@@ -81,31 +81,31 @@ if ( isset( $_POST['w2f_pc_warranty_settings_save'] ) && check_admin_referer( 'w
 			<div id="w2f-pc-warranty-brackets">
 				<?php if ( ! empty( $price_brackets ) ) : ?>
 					<?php foreach ( $price_brackets as $index => $bracket ) : ?>
-						<div class="w2f-pc-bracket-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
-							<label style="min-width: 80px;">
+						<div class="w2f-pc-bracket-row">
+							<label>
 								<?php esc_html_e( 'Min Price:', 'w2f-pc-configurator' ); ?>
 								<input type="number" name="w2f_pc_warranty_brackets[<?php echo esc_attr( $index ); ?>][min]" value="<?php echo esc_attr( $bracket['min'] ); ?>" step="0.01" min="0" class="small-text" required />
 							</label>
-							<label style="min-width: 80px;">
+							<label>
 								<?php esc_html_e( 'Max Price:', 'w2f-pc-configurator' ); ?>
 								<input type="number" name="w2f_pc_warranty_brackets[<?php echo esc_attr( $index ); ?>][max]" value="<?php echo esc_attr( $bracket['max'] ); ?>" step="0.01" min="0" class="small-text" required />
 							</label>
-							<label style="min-width: 120px;">
+							<label>
 								<?php esc_html_e( 'Cost (ex VAT):', 'w2f-pc-configurator' ); ?>
 								<input type="number" name="w2f_pc_warranty_brackets[<?php echo esc_attr( $index ); ?>][cost]" value="<?php echo esc_attr( $bracket['cost'] ); ?>" step="0.01" min="0" class="small-text" required />
 							</label>
-							<button type="button" class="button w2f-pc-remove-bracket" style="margin-top: 20px;"><?php esc_html_e( 'Remove', 'w2f-pc-configurator' ); ?></button>
+							<button type="button" class="button w2f-pc-remove-bracket"><?php esc_html_e( 'Remove', 'w2f-pc-configurator' ); ?></button>
 						</div>
 					<?php endforeach; ?>
 				<?php endif; ?>
 			</div>
 			
-			<button type="button" class="button w2f-pc-add-bracket" style="margin-top: 10px;"><?php esc_html_e( 'Add Bracket', 'w2f-pc-configurator' ); ?></button>
+			<button type="button" class="button w2f-pc-add-bracket"><?php esc_html_e( 'Add Bracket', 'w2f-pc-configurator' ); ?></button>
 		</div>
 		
 		<!-- Warranty Products Section -->
-		<div class="w2f-pc-settings-section" style="background: #fff; border: 1px solid #ccd0d4; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-			<h3 style="margin-top: 0;"><?php esc_html_e( 'Warranty Products', 'w2f-pc-configurator' ); ?></h3>
+		<div class="w2f-pc-settings-section">
+			<h3><?php esc_html_e( 'Warranty Products', 'w2f-pc-configurator' ); ?></h3>
 			<p class="description">
 				<?php esc_html_e( 'Select warranty products that will appear in the Services tab on all PC configurator products. These will be displayed as thumbnails and customers must select one.', 'w2f-pc-configurator' ); ?>
 			</p>
@@ -123,18 +123,18 @@ if ( isset( $_POST['w2f_pc_warranty_settings_save'] ) && check_admin_referer( 'w
 		</div>
 		
 		<!-- Warranty Description Section -->
-		<div class="w2f-pc-settings-section" style="background: #fff; border: 1px solid #ccd0d4; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-			<h3 style="margin-top: 0;"><?php esc_html_e( 'Warranty Description', 'w2f-pc-configurator' ); ?></h3>
+		<div class="w2f-pc-settings-section">
+			<h3><?php esc_html_e( 'Warranty Description', 'w2f-pc-configurator' ); ?></h3>
 			<p class="description">
 				<?php esc_html_e( 'Enter a description that will be displayed above the warranty options in the Services tab on all PC configurator products.', 'w2f-pc-configurator' ); ?>
 			</p>
 			
-			<textarea id="w2f_pc_warranty_description" name="w2f_pc_warranty_description" rows="4" style="width: 100%;" class="large-text"><?php echo esc_textarea( $warranty_description ); ?></textarea>
+			<textarea id="w2f_pc_warranty_description" name="w2f_pc_warranty_description" rows="4" class="large-text"><?php echo esc_textarea( $warranty_description ); ?></textarea>
 		</div>
 		
 		<!-- Default Warranty Section -->
-		<div class="w2f-pc-settings-section" style="background: #fff; border: 1px solid #ccd0d4; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-			<h3 style="margin-top: 0;"><?php esc_html_e( 'Default Warranty', 'w2f-pc-configurator' ); ?></h3>
+		<div class="w2f-pc-settings-section">
+			<h3><?php esc_html_e( 'Default Warranty', 'w2f-pc-configurator' ); ?></h3>
 			<p class="description">
 				<?php esc_html_e( 'Select the default warranty option that will be pre-selected for all PC configurator products. This warranty will be automatically selected when customers open the configurator.', 'w2f-pc-configurator' ); ?>
 			</p>
@@ -164,14 +164,14 @@ jQuery(document).ready(function($) {
 	
 	// Add bracket row.
 	$('.w2f-pc-add-bracket').on('click', function() {
-		var row = $('<div class="w2f-pc-bracket-row" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">' +
-			'<label style="min-width: 80px;"><?php esc_html_e( 'Min Price:', 'w2f-pc-configurator' ); ?> ' +
+		var row = $('<div class="w2f-pc-bracket-row">' +
+			'<label><?php esc_html_e( 'Min Price:', 'w2f-pc-configurator' ); ?> ' +
 			'<input type="number" name="w2f_pc_warranty_brackets[' + bracketIndex + '][min]" value="0" step="0.01" min="0" class="small-text" required /></label>' +
-			'<label style="min-width: 80px;"><?php esc_html_e( 'Max Price:', 'w2f-pc-configurator' ); ?> ' +
+			'<label><?php esc_html_e( 'Max Price:', 'w2f-pc-configurator' ); ?> ' +
 			'<input type="number" name="w2f_pc_warranty_brackets[' + bracketIndex + '][max]" value="1000" step="0.01" min="0" class="small-text" required /></label>' +
-			'<label style="min-width: 120px;"><?php esc_html_e( 'Cost (ex VAT):', 'w2f-pc-configurator' ); ?> ' +
+			'<label><?php esc_html_e( 'Cost (ex VAT):', 'w2f-pc-configurator' ); ?> ' +
 			'<input type="number" name="w2f_pc_warranty_brackets[' + bracketIndex + '][cost]" value="10.00" step="0.01" min="0" class="small-text" required /></label>' +
-			'<button type="button" class="button w2f-pc-remove-bracket" style="margin-top: 20px;"><?php esc_html_e( 'Remove', 'w2f-pc-configurator' ); ?></button>' +
+			'<button type="button" class="button w2f-pc-remove-bracket"><?php esc_html_e( 'Remove', 'w2f-pc-configurator' ); ?></button>' +
 			'</div>');
 		$('#w2f-pc-warranty-brackets').append(row);
 		bracketIndex++;

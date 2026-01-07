@@ -32,7 +32,7 @@ foreach ( $configurator_products as $product ) {
 	}
 }
 ?>
-<div class="wrap">
+<div class="wrap w2f-pc-admin-page">
 	<h1><?php esc_html_e( 'PC Configurator Settings', 'w2f-pc-configurator' ); ?></h1>
 
 	<div class="w2f-pc-admin-dashboard">

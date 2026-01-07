@@ -41,7 +41,7 @@ if ( isset( $_POST['w2f_pc_bulk_update_execute'] ) && check_admin_referer( 'w2f-
 	}
 }
 ?>
-<div class="wrap">
+<div class="wrap w2f-pc-admin-page">
 	<h1><?php esc_html_e( 'Bulk Update Products', 'w2f-pc-configurator' ); ?></h1>
 	<p class="description"><?php esc_html_e( 'Replace a product across all configurator products. This is useful when a product becomes unavailable and needs to be replaced with an alternative.', 'w2f-pc-configurator' ); ?></p>
 
@@ -100,7 +100,7 @@ if ( isset( $_POST['w2f_pc_bulk_update_execute'] ) && check_admin_referer( 'w2f-
 	</form>
 
 	<?php if ( $preview_data ) : ?>
-		<div class="w2f-pc-bulk-update-preview">
+		<div class="w2f-pc-preview-section">
 			<h2><?php esc_html_e( 'Preview: Where This Product Is Used', 'w2f-pc-configurator' ); ?></h2>
 			
 			<?php if ( empty( $preview_data['in_component_options'] ) ) : ?>
@@ -110,7 +110,7 @@ if ( isset( $_POST['w2f_pc_bulk_update_execute'] ) && check_admin_referer( 'w2f-
 			<?php else : ?>
 				<?php if ( ! empty( $preview_data['in_component_options'] ) ) : ?>
 					<h3><?php esc_html_e( 'Used in Component Options', 'w2f-pc-configurator' ); ?></h3>
-					<ul>
+					<ul class="w2f-pc-usage-list">
 						<?php foreach ( $preview_data['in_component_options'] as $usage ) : ?>
 							<li>
 								<strong><?php echo esc_html( $usage['configurator_name'] ); ?></strong>
