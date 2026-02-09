@@ -247,7 +247,7 @@
 							return {
 								term: params.term,
 								action: 'woocommerce_json_search_products',
-								security: w2f_pc_admin_params.nonce
+								security: w2f_pc_admin_params.search_products_nonce
 							};
 						},
 						processResults: function(data) {
@@ -279,7 +279,7 @@
 							return {
 								term: params.term,
 								action: 'woocommerce_json_search_products',
-								security: w2f_pc_admin_params.nonce
+								security: w2f_pc_admin_params.search_products_nonce
 							};
 						},
 						processResults: function(data) {

@@ -425,6 +425,7 @@
 }
 
 .w2f-pc-thumbnail-option.hidden,
+.w2f-pc-thumbnail-card.hidden,
 .w2f-pc-component-option.hidden,
 .w2f-pc-dropdown-option.hidden {
 	display: none;

@@ -651,17 +651,20 @@
 					var $component = self.domCache.components[componentId] || $('.w2f-pc-component[data-component-id="' + componentId + '"]');
 					
 					if (searchTerm === '') {
-						$component.find('.w2f-pc-thumbnail-option, .w2f-pc-dropdown-option').removeClass('hidden');
+						$component.find('.w2f-pc-thumbnail-card, .w2f-pc-dropdown-option').removeClass('hidden');
 						$component.find('.component-options select option').show();
+						$component.find('.w2f-pc-thumbnail-wrapper').each(function() {
+							self.updateThumbnailPage($(this));
+						});
 					} else {
-						// Filter thumbnails.
-						$component.find('.w2f-pc-thumbnail-option').each(function() {
-							var $option = $(this);
-							var productName = $option.find('.thumbnail-name').text().toLowerCase();
+						// Filter thumbnails (template uses .w2f-pc-thumbnail-card with .thumbnail-name).
+						$component.find('.w2f-pc-thumbnail-card').each(function() {
+							var $card = $(this);
+							var productName = $card.find('.thumbnail-name').text().toLowerCase();
 							if (productName.indexOf(searchTerm) !== -1) {
-								$option.removeClass('hidden');
+								$card.removeClass('hidden');
 							} else {
-								$option.addClass('hidden');
+								$card.addClass('hidden');
 							}
 						});
 						
@@ -686,6 +689,12 @@
 							$option.hide();
 						}
 					});
+						// Reset thumbnail pagination to first page of filtered results.
+						$component.find('.w2f-pc-thumbnail-wrapper').each(function() {
+							var $wrap = $(this);
+							$wrap.data('current-page', 1);
+							self.updateThumbnailPage($wrap);
+						});
 					}
 				}, 300);
 			});
@@ -775,20 +784,27 @@
 			var itemsPerPage = $wrapper.data('items-per-page') || 12;
 			var $grid = $wrapper.find('.w2f-pc-thumbnail-grid');
 			var $cards = $grid.find('.w2f-pc-thumbnail-card');
+			var $visibleCards = $cards.not('.hidden');
 			var $pagination = $wrapper.find('.w2f-pc-thumbnail-pagination');
 			var $prevBtn = $pagination.find('.w2f-pc-pagination-prev');
 			var $nextBtn = $pagination.find('.w2f-pc-pagination-next');
 			var $currentSpan = $pagination.find('.w2f-pc-pagination-current');
 			var $totalSpan = $pagination.find('.w2f-pc-pagination-total');
 			
-			// Hide all cards.
+			// Hide all cards from pagination visibility.
 			$cards.removeClass('w2f-pc-thumbnail-visible');
 			
-			// Show cards for current page.
+			// Paginate only over non-hidden cards (so search + pagination work together).
+			var visibleTotal = $visibleCards.length;
+			var totalPagesForVisible = Math.ceil(visibleTotal / itemsPerPage) || 1;
+			currentPage = Math.min(currentPage, totalPagesForVisible);
+			$wrapper.data('current-page', currentPage);
+			totalPages = totalPagesForVisible;
+			$wrapper.data('total-pages', totalPages);
+			
 			var startIndex = (currentPage - 1) * itemsPerPage;
 			var endIndex = startIndex + itemsPerPage;
-			
-			$cards.slice(startIndex, endIndex).addClass('w2f-pc-thumbnail-visible');
+			$visibleCards.slice(startIndex, endIndex).addClass('w2f-pc-thumbnail-visible');
 			
 			// Update pagination info.
 			$currentSpan.text(currentPage);
@@ -809,8 +825,8 @@
 			}
 
 			var $grid = $wrapper.find('.w2f-pc-thumbnail-grid');
-			var $options = $grid.find('.w2f-pc-thumbnail-option');
-			var $selected = $grid.find('.w2f-pc-thumbnail-option.selected');
+			var $options = $grid.find('.w2f-pc-thumbnail-card');
+			var $selected = $grid.find('.w2f-pc-thumbnail-card.selected');
 			
 			if (!$selected.length) {
 				return;
