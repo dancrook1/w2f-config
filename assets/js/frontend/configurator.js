@@ -363,8 +363,6 @@
 					} else {
 						$selected.find('.w2f-pc-dropdown-text').empty().text('None');
 					}
-					// Remove quick view button for "None" option.
-					$selected.find('.w2f-pc-dropdown-quick-view').remove();
 				} else {
 					$hiddenInput.val(productId);
 					self.currentConfiguration[componentId] = productId;
@@ -426,23 +424,6 @@
 						}
 						// Clear and set text to avoid duplication.
 						$textSpan.empty().text(productName);
-					}
-					
-					// Update quick view button if it exists, or create it if it doesn't.
-					if ($textWrapper.length) {
-						var $quickView = $textWrapper.find('.w2f-pc-dropdown-quick-view');
-						if ($quickView.length) {
-							$quickView.attr('data-product-id', productId);
-						} else {
-							// Create quick view button if it doesn't exist.
-							var $newQuickView = $('<button>', {
-								type: 'button',
-								class: 'w2f-pc-quick-view w2f-pc-dropdown-quick-view',
-								'data-product-id': productId,
-								'aria-label': 'View product details'
-							}).html('<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="8" cy="5.5" r="1" fill="currentColor"/><path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>');
-							$textSpan.after($newQuickView);
-						}
 					}
 				}
 				
@@ -923,23 +904,6 @@
 							}
 							// Clear and set text to avoid duplication.
 							$textSpan.empty().text(productName);
-						}
-						
-						// Update quick view button if it exists, or create it if it doesn't.
-						if ($textWrapper.length) {
-							var $quickView = $textWrapper.find('.w2f-pc-dropdown-quick-view');
-							if ($quickView.length) {
-								$quickView.attr('data-product-id', productId);
-							} else {
-								// Create quick view button if it doesn't exist.
-								var $newQuickView = $('<button>', {
-									type: 'button',
-									class: 'w2f-pc-quick-view w2f-pc-dropdown-quick-view',
-									'data-product-id': productId,
-									'aria-label': 'View product details'
-								}).html('<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="8" cy="5.5" r="1" fill="currentColor"/><path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>');
-								$textSpan.after($newQuickView);
-							}
 						}
 					}
 				}
@@ -2152,23 +2116,6 @@
 									$textSpan.empty().text(productName);
 								}
 								
-								// Update quick view button if it exists, or create it if it doesn't.
-								if ($textWrapper.length) {
-									var $quickView = $textWrapper.find('.w2f-pc-dropdown-quick-view');
-									if ($quickView.length) {
-										$quickView.attr('data-product-id', productId);
-									} else {
-										// Create quick view button if it doesn't exist.
-										var $newQuickView = $('<button>', {
-											type: 'button',
-											class: 'w2f-pc-quick-view w2f-pc-dropdown-quick-view',
-											'data-product-id': productId,
-											'aria-label': 'View product details'
-										}).html('<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="8" cy="5.5" r="1" fill="currentColor"/><path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>');
-										$textSpan.after($newQuickView);
-									}
-								}
-								
 								$hiddenInput.trigger('change');
 							}
 						}
@@ -2275,26 +2222,6 @@
 								}
 								// Clear and set text to avoid duplication.
 								$textSpan.empty().text(productName);
-							}
-							
-							// Update quick view button if it exists, or create it if it doesn't.
-							if ($textWrapper.length) {
-								var $quickView = $textWrapper.find('.w2f-pc-dropdown-quick-view');
-								if ($quickView.length) {
-									$quickView.attr('data-product-id', productId);
-								} else if (productId && productId !== '0') {
-									// Create quick view button if it doesn't exist.
-									var $newQuickView = $('<button>', {
-										type: 'button',
-										class: 'w2f-pc-quick-view w2f-pc-dropdown-quick-view',
-										'data-product-id': productId,
-										'aria-label': 'View product details'
-									}).html('<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="8" cy="5.5" r="1" fill="currentColor"/><path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>');
-									$textSpan.after($newQuickView);
-								} else {
-									// Remove quick view button for "None" option.
-									$textWrapper.find('.w2f-pc-dropdown-quick-view').remove();
-								}
 							}
 							
 							$hiddenInput.trigger('change');

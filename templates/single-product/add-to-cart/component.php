@@ -272,13 +272,6 @@ if ( 'warranty' === $component_id ) {
 							<img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $selected_product->get_name() ); ?>" class="w2f-pc-dropdown-image" />
 							<span class="w2f-pc-dropdown-text-wrapper">
 								<span class="w2f-pc-dropdown-text"><?php echo esc_html( $selected_product->get_name() ); ?></span>
-								<button type="button" class="w2f-pc-quick-view w2f-pc-dropdown-quick-view" data-product-id="<?php echo esc_attr( $default_product_id ); ?>" aria-label="<?php esc_attr_e( 'View product details', 'w2f-pc-configurator' ); ?>">
-									<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/>
-										<circle cx="8" cy="5.5" r="1" fill="currentColor"/>
-										<path d="M8 8V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-									</svg>
-								</button>
 							</span>
 						<?php else : ?>
 							<span class="w2f-pc-dropdown-text"><?php esc_html_e( 'Select an option...', 'w2f-pc-configurator' ); ?></span>

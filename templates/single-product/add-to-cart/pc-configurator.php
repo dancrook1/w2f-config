@@ -66,10 +66,10 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 <div class="w2f-pc-configurator-wrapper" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
 	<!-- Action Buttons -->
 	<div class="w2f-pc-action-buttons">
-		<button type="button" class="button w2f-pc-configure-button">
+		<button type="button" class="button bricks-button bricks-background-primary w2f-btn-primary w2f-pc-configure-button">
 			<?php esc_html_e( 'Configure', 'w2f-pc-configurator' ); ?>
 		</button>
-		<button type="button" class="button alt w2f-pc-add-default-to-cart" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
+		<button type="button" class="button alt bricks-button bricks-background-secondary w2f-btn-second w2f-pc-add-default-to-cart" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
 			<?php esc_html_e( 'Add to Cart', 'w2f-pc-configurator' ); ?>
 		</button>
 	</div>
@@ -176,7 +176,7 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 
 								<input type="hidden" name="quantity" value="1" />
 
-								<button type="submit" name="add-to-cart" value="<?php echo esc_attr( $product->get_id() ); ?>" class="single_add_to_cart_button button alt">
+								<button type="submit" name="add-to-cart" value="<?php echo esc_attr( $product->get_id() ); ?>" class="single_add_to_cart_button button bricks-button bricks-background-primary w2f-btn-primary">
 									<?php esc_html_e( 'Add To Cart', 'w2f-pc-configurator' ); ?>
 								</button>
 
@@ -187,9 +187,9 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 						</div>
 
 						<div class="w2f-pc-actions">
-							<button type="button" class="button w2f-pc-share"><?php esc_html_e( 'Share Configuration', 'w2f-pc-configurator' ); ?></button>
-							<button type="button" class="button w2f-pc-load-config" style="display: none;"><?php esc_html_e( 'Load Saved', 'w2f-pc-configurator' ); ?></button>
-							<button type="button" class="button w2f-pc-reset-config" style="display: none;"><?php esc_html_e( 'Reset to Default', 'w2f-pc-configurator' ); ?></button>
+							<button type="button" class="button bricks-button bricks-background-secondary w2f-btn-second w2f-pc-share"><?php esc_html_e( 'Share Configuration', 'w2f-pc-configurator' ); ?></button>
+							<button type="button" class="button bricks-button bricks-background-secondary w2f-btn-second w2f-pc-load-config" style="display: none;"><?php esc_html_e( 'Load Saved', 'w2f-pc-configurator' ); ?></button>
+							<button type="button" class="button bricks-button bricks-background-secondary w2f-btn-second w2f-pc-reset-config" style="display: none;"><?php esc_html_e( 'Reset to Default', 'w2f-pc-configurator' ); ?></button>
 						</div>
 					</div>
 				</div>

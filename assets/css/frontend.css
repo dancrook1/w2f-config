@@ -147,56 +147,10 @@
 	flex-wrap: wrap;
 }
 
-.w2f-pc-configure-button,
-.w2f-pc-add-default-to-cart,
-.elementor-widget .w2f-pc-configure-button,
-.elementor-widget .w2f-pc-add-default-to-cart,
-.elementor-element .w2f-pc-configure-button,
-.elementor-element .w2f-pc-add-default-to-cart {
-	padding: var(--w2f-pc-spacing-md) var(--w2f-pc-spacing-lg) !important;
-	font-size: var(--w2f-pc-font-size-base) !important;
-	font-weight: var(--w2f-pc-font-weight-medium) !important;
-	font-family: var(--w2f-pc-font-family) !important;
-	cursor: pointer !important;
-	min-width: 150px !important;
-	border-radius: var(--w2f-pc-radius-md) !important;
-	transition: all var(--w2f-pc-transition-base) !important;
-	border: none !important;
-	line-height: var(--w2f-pc-line-height-normal) !important;
-}
-
-.w2f-pc-configure-button {
-	background: #f5891f;
-	color: var(--w2f-pc-color-white);
-	box-shadow: var(--w2f-pc-shadow-md);
-	font-weight: var(--w2f-pc-font-weight-semibold);
-	border-radius: 8px;
-}
-
-.w2f-pc-configure-button:hover {
-	background: #ff9933;
-	box-shadow: 0 5px 15px rgba(245, 137, 31, 0.3);
-	transform: translateY(-2px);
-}
-
-.w2f-pc-configure-button:active {
-	transform: translateY(0);
-	box-shadow: var(--w2f-pc-shadow-sm);
-}
-
-.w2f-pc-add-default-to-cart {
-	background: var(--w2f-pc-color-white);
-	color: #f5891f;
-	border: 2px solid #f5891f;
-	font-weight: var(--w2f-pc-font-weight-semibold);
-	border-radius: 8px;
-}
-
-.w2f-pc-add-default-to-cart:hover {
-	background: #f5891f;
-	color: var(--w2f-pc-color-white);
-	transform: translateY(-2px);
-	box-shadow: 0 5px 15px rgba(245, 137, 31, 0.3);
+/* Let Bricks/theme control buttons with .w2f-btn-primary / .w2f-btn-second - no plugin overrides */
+.w2f-pc-configurator-wrapper .w2f-btn-primary,
+.w2f-pc-configurator-wrapper .w2f-btn-second {
+	font-family: inherit;
 }
 
 /* ============================================
@@ -424,9 +378,7 @@
 	color: #f5891f;
 }
 
-.w2f-pc-thumbnail-option.hidden,
 .w2f-pc-thumbnail-card.hidden,
-.w2f-pc-component-option.hidden,
 .w2f-pc-dropdown-option.hidden {
 	display: none;
 }
@@ -500,45 +452,11 @@
 	color: var(--w2f-pc-text-secondary);
 	transition: transform var(--w2f-pc-transition-base);
 	margin-left: auto;
+	z-index: 1;
 }
 
 .w2f-pc-dropdown-selected.active .w2f-pc-dropdown-arrow {
 	transform: rotate(180deg);
-}
-
-.w2f-pc-dropdown-quick-view {
-	background: none;
-	border: none;
-	padding: var(--w2f-pc-spacing-xs);
-	cursor: pointer;
-	opacity: 0.7;
-	transition: all var(--w2f-pc-transition-base);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 20px;
-	height: 20px;
-	color: var(--w2f-pc-text-secondary);
-	flex-shrink: 0;
-	z-index: 1;
-}
-
-.w2f-pc-dropdown-quick-view:hover {
-	opacity: 1;
-	color: #f5891f;
-	transform: scale(1.1);
-}
-
-.w2f-pc-dropdown-quick-view svg {
-	width: 16px;
-	height: 16px;
-}
-
-.w2f-pc-dropdown-arrow {
-	flex-shrink: 0;
-	color: var(--w2f-pc-text-secondary);
-	transition: transform var(--w2f-pc-transition-base);
-	z-index: 1;
 }
 
 .w2f-pc-dropdown-options {
@@ -850,11 +768,6 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--w2f-pc-spacing-md);
-}
-
-.w2f-pc-share {
-	margin-right: 0;
-	width: 100%;
 }
 
 .w2f-pc-configuration {
@@ -1179,64 +1092,10 @@
 	visibility: visible !important;
 }
 
-/* ============================================
-   BUTTONS
-   ============================================ */
-
-.w2f-pc-share,
-.single_add_to_cart_button {
-	padding: var(--w2f-pc-spacing-md) var(--w2f-pc-spacing-lg);
-	font-size: var(--w2f-pc-font-size-base);
-	font-weight: var(--w2f-pc-font-weight-medium);
-	border-radius: var(--w2f-pc-radius-md);
-	transition: all var(--w2f-pc-transition-base);
-	cursor: pointer;
-	border: none;
-	line-height: var(--w2f-pc-line-height-normal);
-	display: inline-block;
-	text-align: center;
-}
-
-.single_add_to_cart_button {
-	width: 100%;
-	background: #f5891f;
-	color: var(--w2f-pc-color-white);
-	box-shadow: var(--w2f-pc-shadow-md);
-	font-weight: var(--w2f-pc-font-weight-semibold);
-	border-radius: 8px;
-}
-
-.single_add_to_cart_button:hover {
-	background: #ffbd72;
-	color: #000;
-	box-shadow: 0 5px 15px rgba(245, 137, 31, 0.3);
-	transform: translateY(-2px);
-}
-
-.single_add_to_cart_button:active {
-	transform: translateY(0);
-	box-shadow: var(--w2f-pc-shadow-sm);
-}
-
 .w2f-pc-configurator-form {
 	margin-top: var(--w2f-pc-spacing-lg);
 	padding-top: var(--w2f-pc-spacing-lg);
 	border-top: 1px solid var(--w2f-pc-border-color);
-}
-
-.w2f-pc-share {
-	background: var(--w2f-pc-bg-primary);
-	color: #f5891f;
-	border: 2px solid #f5891f;
-	font-weight: var(--w2f-pc-font-weight-semibold);
-	border-radius: 8px;
-}
-
-.w2f-pc-share:hover {
-	background: #f5891f;
-	color: var(--w2f-pc-color-white);
-	transform: translateY(-2px);
-	box-shadow: 0 5px 15px rgba(245, 137, 31, 0.3);
 }
 
 /* ============================================
@@ -1336,7 +1195,7 @@
 	box-shadow: var(--w2f-pc-shadow-sm);
 }
 
-.w2f-pc-thumbnail-option:hover .w2f-pc-quick-view {
+.w2f-pc-thumbnail-card:hover .w2f-pc-quick-view {
 	opacity: 1;
 	background: rgba(255, 255, 255, 1);
 }
@@ -1455,32 +1314,6 @@
 	margin-top: var(--w2f-pc-spacing-lg);
 	padding-top: var(--w2f-pc-spacing-lg);
 	border-top: 1px solid var(--w2f-pc-border-color);
-}
-
-.w2f-pc-modal-add-to-cart {
-	width: 100%;
-	padding: var(--w2f-pc-spacing-md) var(--w2f-pc-spacing-lg);
-	font-size: var(--w2f-pc-font-size-base);
-	font-weight: var(--w2f-pc-font-weight-semibold);
-	border-radius: var(--w2f-pc-radius-md);
-	background: #f5891f;
-	color: var(--w2f-pc-color-white);
-	border: none;
-	cursor: pointer;
-	transition: all var(--w2f-pc-transition-base);
-	box-shadow: var(--w2f-pc-shadow-md);
-}
-
-.w2f-pc-modal-add-to-cart:hover {
-	background: #ffbd72;
-	color: #000;
-	box-shadow: 0 5px 15px rgba(245, 137, 31, 0.3);
-	transform: translateY(-2px);
-}
-
-.w2f-pc-modal-add-to-cart:active {
-	transform: translateY(0);
-	box-shadow: var(--w2f-pc-shadow-sm);
 }
 
 .w2f-pc-quick-view-image {
@@ -1766,14 +1599,14 @@
    DISABLED PRODUCTS (FILTERED BY RULES - ERRORS ONLY)
    ============================================ */
 
-.w2f-pc-thumbnail-option.w2f-pc-disabled,
+.w2f-pc-thumbnail-card.w2f-pc-disabled,
 .w2f-pc-dropdown-option.w2f-pc-disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 	position: relative;
 }
 
-.w2f-pc-thumbnail-option.w2f-pc-disabled::after,
+.w2f-pc-thumbnail-card.w2f-pc-disabled::after,
 .w2f-pc-dropdown-option.w2f-pc-disabled::after {
 	content: '';
 	position: absolute;
@@ -1785,7 +1618,7 @@
 	z-index: 1;
 }
 
-.w2f-pc-thumbnail-option.w2f-pc-disabled input[type="radio"],
+.w2f-pc-thumbnail-card.w2f-pc-disabled input[type="radio"],
 .w2f-pc-dropdown-option.w2f-pc-disabled {
 	pointer-events: none;
 }
@@ -1864,24 +1697,22 @@
 	font-family: var(--w2f-pc-font-family) !important;
 }
 
+/* Exclude button so Bricks classes .w2f-btn-primary / .w2f-btn-second can control button styling */
 .w2f-pc-configurator-wrapper p,
 .w2f-pc-configurator-wrapper span,
 .w2f-pc-configurator-wrapper div,
-.w2f-pc-configurator-wrapper button,
 .w2f-pc-configurator-wrapper input,
 .w2f-pc-configurator-wrapper select,
 .w2f-pc-configurator-wrapper label,
 .elementor-widget .w2f-pc-configurator-wrapper p,
 .elementor-widget .w2f-pc-configurator-wrapper span,
 .elementor-widget .w2f-pc-configurator-wrapper div,
-.elementor-widget .w2f-pc-configurator-wrapper button,
 .elementor-widget .w2f-pc-configurator-wrapper input,
 .elementor-widget .w2f-pc-configurator-wrapper select,
 .elementor-widget .w2f-pc-configurator-wrapper label,
 .elementor-element .w2f-pc-configurator-wrapper p,
 .elementor-element .w2f-pc-configurator-wrapper span,
 .elementor-element .w2f-pc-configurator-wrapper div,
-.elementor-element .w2f-pc-configurator-wrapper button,
 .elementor-element .w2f-pc-configurator-wrapper input,
 .elementor-element .w2f-pc-configurator-wrapper select,
 .elementor-element .w2f-pc-configurator-wrapper label {
@@ -1893,27 +1724,6 @@
 .elementor-widget .w2f-pc-configurator-wrapper *,
 .elementor-element .w2f-pc-configurator-wrapper * {
 	box-sizing: border-box !important;
-}
-
-/* Ensure all configurator buttons override Elementor button styles */
-.w2f-pc-configure-button,
-.w2f-pc-add-default-to-cart,
-.w2f-pc-share,
-.w2f-pc-reset-config,
-.w2f-pc-load-config,
-.elementor-widget .w2f-pc-configure-button,
-.elementor-widget .w2f-pc-add-default-to-cart,
-.elementor-widget .w2f-pc-share,
-.elementor-widget .w2f-pc-reset-config,
-.elementor-widget .w2f-pc-load-config,
-.elementor-element .w2f-pc-configure-button,
-.elementor-element .w2f-pc-add-default-to-cart,
-.elementor-element .w2f-pc-share,
-.elementor-element .w2f-pc-reset-config,
-.elementor-element .w2f-pc-load-config {
-	font-family: var(--w2f-pc-font-family) !important;
-	text-transform: none !important;
-	letter-spacing: normal !important;
 }
 
 /* Override Elementor form input styles */
@@ -1940,10 +1750,6 @@
 .elementor-widget .w2f-pc-configurator-wrapper a:hover,
 .elementor-element .w2f-pc-configurator-wrapper a:hover {
 	text-decoration: none !important;
-}
-
-.w2f-pc-thumbnail-option {
-	position: relative;
 }
 
 .w2f-pc-summary-warnings {
