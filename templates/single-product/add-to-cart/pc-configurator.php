@@ -64,6 +64,32 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 ?>
 
 <div class="w2f-pc-configurator-wrapper" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
+	<script>
+		// Ensure tab content divs have IDs before tabs.js runs (prevent tabs.js errors)
+		(function() {
+			if (typeof jQuery !== 'undefined') {
+				jQuery(document).ready(function($) {
+					$('.w2f-pc-tabs[data-w2f-pc-tabs="true"]').each(function() {
+						var $tabList = $(this);
+						$tabList.find('a').each(function() {
+							var $tab = $(this);
+							var href = $tab.attr('href');
+							if (href && href.indexOf('#') === 0) {
+								var targetId = href.replace('#', '');
+								var $targetContent = $('#' + targetId);
+								// Ensure target content exists and has proper ID
+								if ($targetContent.length) {
+									if (!$targetContent.attr('id')) {
+										$targetContent.attr('id', targetId);
+									}
+								}
+							}
+						});
+					});
+				});
+			}
+		})();
+	</script>
 	<!-- Action Buttons -->
 	<div class="w2f-pc-action-buttons">
 		<button type="button" class="button bricks-button bricks-background-primary w2f-btn-primary w2f-pc-configure-button">
@@ -78,8 +104,35 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 	<div class="w2f-pc-modal-overlay" id="w2f-pc-configurator-modal">
 		<div class="w2f-pc-modal-content">
 			<div class="w2f-pc-modal-header">
-				<h2><?php esc_html_e( 'Configure Your PC', 'w2f-pc-configurator' ); ?></h2>
-				<button type="button" class="w2f-pc-modal-close" aria-label="<?php esc_attr_e( 'Close', 'w2f-pc-configurator' ); ?>">&times;</button>
+				<div class="w2f-pc-header-left">
+					<button type="button" class="w2f-pc-modal-close" aria-label="<?php esc_attr_e( 'Close', 'w2f-pc-configurator' ); ?>">&times;</button>
+					<div class="w2f-pc-header-title-block">
+						<h2><?php esc_html_e( 'Configure Your System', 'w2f-pc-configurator' ); ?></h2>
+						<span class="w2f-pc-product-name"><?php echo esc_html( $product->get_name() ); ?></span>
+					</div>
+				</div>
+				<?php if ( ! empty( $tabs ) ) : ?>
+					<ul class="w2f-pc-tabs" data-w2f-pc-tabs="true" aria-label="<?php esc_attr_e( 'Configuration sections', 'w2f-pc-configurator' ); ?>">
+						<?php
+						$first_tab = true;
+						foreach ( $tabs as $tab_name => $tab_components ) :
+							$tab_id = sanitize_title( $tab_name );
+							?>
+							<li class="w2f-pc-tab<?php echo $first_tab ? ' active' : ''; ?>">
+								<a href="#w2f-pc-tab-<?php echo esc_attr( $tab_id ); ?>">
+									<?php echo esc_html( $tab_name ); ?>
+								</a>
+							</li>
+							<?php
+							$first_tab = false;
+						endforeach;
+						?>
+					</ul>
+				<?php endif; ?>
+				<div class="w2f-pc-header-total">
+					<span class="w2f-pc-header-total-label"><?php esc_html_e( 'Total Price', 'w2f-pc-configurator' ); ?></span>
+					<span class="w2f-pc-header-total-price"><?php echo wp_kses_post( wc_price( $default_price ) ); ?></span>
+				</div>
 			</div>
 			<div class="w2f-pc-modal-body">
 				<div class="w2f-pc-modal-columns">
@@ -87,15 +140,15 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 					<div class="w2f-pc-configurator-column">
 						<div class="w2f-pc-configurator" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
 							<?php if ( ! empty( $tabs ) ) : ?>
-								<!-- Tab Navigation -->
-								<ul class="w2f-pc-tabs" role="tablist">
+								<!-- Mobile Tab Navigation -->
+								<ul class="w2f-pc-tabs" data-w2f-pc-tabs="true" aria-label="<?php esc_attr_e( 'Configuration sections', 'w2f-pc-configurator' ); ?>">
 									<?php
 									$first_tab = true;
 									foreach ( $tabs as $tab_name => $tab_components ) :
 										$tab_id = sanitize_title( $tab_name );
 										?>
 										<li class="w2f-pc-tab<?php echo $first_tab ? ' active' : ''; ?>">
-											<a href="#w2f-pc-tab-<?php echo esc_attr( $tab_id ); ?>" role="tab" aria-selected="<?php echo $first_tab ? 'true' : 'false'; ?>">
+											<a href="#w2f-pc-tab-<?php echo esc_attr( $tab_id ); ?>" data-w2f-tab>
 												<?php echo esc_html( $tab_name ); ?>
 											</a>
 										</li>
@@ -111,7 +164,7 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 								foreach ( $tabs as $tab_name => $tab_components ) :
 									$tab_id = sanitize_title( $tab_name );
 									?>
-									<div class="w2f-pc-tab-content<?php echo $first_tab ? ' active' : ''; ?>" id="w2f-pc-tab-<?php echo esc_attr( $tab_id ); ?>" role="tabpanel">
+									<div class="w2f-pc-tab-content<?php echo $first_tab ? ' active' : ''; ?>" id="w2f-pc-tab-<?php echo esc_attr( $tab_id ); ?>">
 										<?php foreach ( $tab_components as $component_id => $component ) : ?>
 											<?php
 											$default_product_id = isset( $default_configuration[ $component_id ] ) ? $default_configuration[ $component_id ] : 0;
@@ -144,7 +197,31 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 					<!-- Right Column: Summary -->
 					<div class="w2f-pc-summary-column">
 						<div class="w2f-pc-summary">
-							<h3><?php esc_html_e( 'Configuration Summary', 'w2f-pc-configurator' ); ?></h3>
+							<!-- Preview Image -->
+							<div class="w2f-pc-summary-preview">
+								<?php
+								$image_id = $product->get_image_id();
+								if ( $image_id ) {
+									$image_url = wp_get_attachment_image_url( $image_id, 'large' );
+									$image_alt = get_post_meta( $image_id, '_wp_attachment_image_alt', true );
+									if ( empty( $image_alt ) ) {
+										$image_alt = $product->get_name();
+									}
+									?>
+									<img src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( $image_alt ); ?>" />
+									<div class="w2f-pc-summary-preview-overlay">
+										<span class="w2f-pc-summary-preview-label"><?php esc_html_e( 'Preview', 'w2f-pc-configurator' ); ?></span>
+										<span class="w2f-pc-summary-preview-name"><?php echo esc_html( $product->get_name() ); ?></span>
+									</div>
+								<?php } else { ?>
+									<div class="w2f-pc-summary-preview-overlay" style="position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end;">
+										<span class="w2f-pc-summary-preview-label"><?php esc_html_e( 'Preview', 'w2f-pc-configurator' ); ?></span>
+										<span class="w2f-pc-summary-preview-name"><?php echo esc_html( $product->get_name() ); ?></span>
+									</div>
+								<?php } ?>
+							</div>
+							<div class="w2f-pc-summary-content-wrapper">
+							<h3><?php esc_html_e( 'Specs Summary', 'w2f-pc-configurator' ); ?></h3>
 
 							<!-- Specifications -->
 							<div class="w2f-pc-summary-section w2f-pc-summary-specs">
@@ -161,8 +238,14 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 
 							<!-- Price -->
 							<div class="w2f-pc-price">
-								<strong><?php esc_html_e( 'Total Price:', 'w2f-pc-configurator' ); ?></strong>
-								<span class="w2f-pc-total-price"><?php echo wp_kses_post( wc_price( $default_price ) ); ?></span>
+								<div>
+									<span class="w2f-pc-base-price-label"><?php esc_html_e( 'Base Price', 'w2f-pc-configurator' ); ?></span>
+									<span class="w2f-pc-base-price-value"><?php echo wp_kses_post( wc_price( $default_price ) ); ?></span>
+								</div>
+								<div>
+									<strong><?php esc_html_e( 'Total', 'w2f-pc-configurator' ); ?></strong>
+									<span class="w2f-pc-total-price"><?php echo wp_kses_post( wc_price( $default_price ) ); ?></span>
+								</div>
 							</div>
 
 							<!-- Compatibility Messages -->
@@ -184,6 +267,7 @@ if ( ! empty( $tabs ) && ! empty( $no_tab_components ) ) {
 							</form>
 
 							<?php do_action( 'woocommerce_after_add_to_cart_form' ); ?>
+							</div>
 						</div>
 
 						<div class="w2f-pc-actions">

@@ -31,6 +31,23 @@
 			this.currentConfiguration = $.extend({}, this.defaultConfiguration);
 			this.currentQuantities = {};
 			
+			// Ensure tab content divs have IDs and link properly to prevent tabs.js errors
+			// This runs before tabs.js initializes to ensure proper structure
+			$('.w2f-pc-tabs[data-w2f-pc-tabs="true"]').each(function() {
+				var $tabList = $(this);
+				$tabList.find('a').each(function() {
+					var $tab = $(this);
+					var href = $tab.attr('href');
+					if (href && href.indexOf('#') === 0) {
+						var targetId = href.replace('#', '');
+						var $targetContent = $('#' + targetId);
+						if ($targetContent.length && !$targetContent.attr('id')) {
+							$targetContent.attr('id', targetId);
+						}
+					}
+				});
+			});
+			
 			// Initialize quantities from form inputs.
 			$('.w2f-pc-quantity-input').each(function() {
 				var $input = $(this);
@@ -44,8 +61,10 @@
 
 			this.bindEvents();
 			this.initializeConfiguration();
-			this.initializeThumbnailPagination();
 			this.filterProductsByRules();
+			this.initializeSelect2();
+			// Initialize thumbnails after Select2 to ensure Select2 doesn't interfere
+			this.initializeThumbnailPagination();
 			this.checkCompatibility();
 			this.calculatePrice();
 			this.updateSpecs();
@@ -94,6 +113,156 @@
 			};
 		},
 
+		/** Initialize SelectWoo/Select2 on configurator dropdown selects. */
+		initializeSelect2: function() {
+			var self = this;
+			var formatPrice = this.formatPrice.bind(this);
+			var initSelect = function($select) {
+				if ($select.hasClass('select2-hidden-accessible') || $select.hasClass('selectWoo-hidden-accessible')) {
+					return;
+				}
+				// Use body as dropdownParent to avoid positioning issues with modal overflow
+				var opts = {
+					width: '100%',
+					minimumResultsForSearch: Infinity,
+					dropdownParent: $(document.body),
+					dropdownAutoWidth: false,
+					templateResult: function(state) {
+						if (!state.id) {
+							return state.text || '';
+						}
+						var $opt = state.element ? $(state.element) : null;
+						if (!$opt || !$opt.length) {
+							return state.text || '';
+						}
+						var name = $opt.data('product-name') || $opt.text() || state.text || '';
+						var relPrice = $opt.data('relative-price');
+						var imgUrl = $opt.data('image-url');
+						var priceStr = '';
+						if (relPrice !== undefined && relPrice !== '' && !isNaN(parseFloat(relPrice))) {
+							var p = parseFloat(relPrice);
+							if (p > 0) {
+								priceStr = ' +' + formatPrice(p);
+							} else if (p < 0) {
+								priceStr = ' -' + formatPrice(Math.abs(p));
+							} else {
+								priceStr = ' —';
+							}
+						} else {
+							priceStr = ' —';
+						}
+						var $out = $('<span class="w2f-pc-select2-result"></span>');
+						if (imgUrl) {
+							$out.append($('<img class="w2f-pc-select2-image" src="' + imgUrl + '" alt="" />'));
+						}
+						$out.append($('<span class="w2f-pc-select2-text">').text(name));
+						$out.append($('<span class="w2f-pc-select2-price">').text(priceStr));
+						return $out;
+					},
+					templateSelection: function(state) {
+						if (!state.id) {
+							return state.text || '';
+						}
+						var $opt = state.element ? $(state.element) : null;
+						if (!$opt || !$opt.length) {
+							return state.text || '';
+						}
+						var name = $opt.data('product-name') || state.text;
+						var relPrice = $opt.data('relative-price');
+						if (relPrice !== undefined && relPrice !== '' && !isNaN(parseFloat(relPrice))) {
+							var p = parseFloat(relPrice);
+							if (p > 0) {
+								name += ' — +' + formatPrice(p);
+							} else if (p < 0) {
+								name += ' — -' + formatPrice(Math.abs(p));
+							}
+						}
+						return name;
+					}
+				};
+				if (typeof $.fn.selectWoo !== 'undefined') {
+					$select.selectWoo(opts);
+					// Ensure dropdown width matches select element (not wider than parent)
+					$select.on('select2:open selectWoo:open', function() {
+						var $selectEl = $(this);
+						var selectWidth = $selectEl.outerWidth() || $selectEl.width();
+						setTimeout(function() {
+							var $dropdown = $('.select2-dropdown');
+							if ($dropdown.length && selectWidth) {
+								$dropdown.css({
+									'width': selectWidth + 'px',
+									'max-width': selectWidth + 'px',
+									'min-width': 'auto'
+								});
+							}
+						}, 0);
+					});
+				} else if (typeof $.fn.select2 !== 'undefined') {
+					$select.select2(opts);
+					// Ensure dropdown width matches select element (not wider than parent)
+					$select.on('select2:open', function() {
+						var $selectEl = $(this);
+						var selectWidth = $selectEl.outerWidth() || $selectEl.width();
+						setTimeout(function() {
+							var $dropdown = $('.select2-dropdown');
+							if ($dropdown.length && selectWidth) {
+								$dropdown.css({
+									'width': selectWidth + 'px',
+									'max-width': selectWidth + 'px',
+									'min-width': 'auto'
+								});
+							}
+						}, 0);
+					});
+				}
+			};
+			// Only initialize Select2 on dropdown-mode components (not thumbnail components)
+			// Target only selects within dropdown components that are visible
+			// Be very specific to avoid affecting thumbnail components
+			$('.w2f-pc-component-dropdown').each(function() {
+				var $component = $(this);
+				// Skip if this is actually a thumbnail component (extra safety)
+				if ($component.hasClass('w2f-pc-component-thumbnail')) {
+					return;
+				}
+				// Find Select2 dropdowns within this dropdown component only
+				var $sel = $component.find('.w2f-pc-select2-dropdown');
+				if (!$sel.length) {
+					return;
+				}
+				$sel.each(function() {
+					var $select = $(this);
+					// Skip if already initialized
+					if ($select.hasClass('select2-hidden-accessible') || $select.hasClass('selectWoo-hidden-accessible')) {
+						return;
+					}
+					// Skip if inside thumbnail mobile dropdown (shouldn't happen, but safety check)
+					if ($select.closest('.w2f-pc-thumbnail-mobile-dropdown').length) {
+						return;
+					}
+					// Skip if inside thumbnail component (shouldn't happen, but safety check)
+					if ($select.closest('.w2f-pc-component-thumbnail').length) {
+						return;
+					}
+					// Only initialize if element is visible (in active tab)
+					if ($select.is(':visible') && $select.closest('.w2f-pc-tab-content.active, .w2f-pc-modal-overlay').length) {
+						initSelect($select);
+					}
+				});
+			});
+		},
+
+		destroySelect2: function() {
+			$('.w2f-pc-select2-dropdown').each(function() {
+				var $sel = $(this);
+				if (typeof $.fn.selectWoo !== 'undefined' && $sel.hasClass('selectWoo-hidden-accessible')) {
+					$sel.selectWoo('destroy');
+				} else if (typeof $.fn.select2 !== 'undefined' && $sel.hasClass('select2-hidden-accessible')) {
+					$sel.select2('destroy');
+				}
+			});
+		},
+
 		bindEvents: function() {
 			var self = this;
 
@@ -102,6 +271,31 @@
 				e.preventDefault();
 				$('.w2f-pc-modal-overlay').addClass('active');
 				$('body').css('overflow', 'hidden');
+				// Re-init Select2 when modal opens (in case it was destroyed on close).
+				self.initializeSelect2();
+				// Re-init thumbnails when modal opens to ensure they display correctly
+				setTimeout(function() {
+					self.initializeThumbnailPagination();
+				}, 100);
+				// Set ARIA tab roles after open so theme tabs.js (which ran at DOMContentLoaded) does not pick these up.
+				// Also ensure tabs have proper IDs and aria-controls to prevent tabs.js errors
+				$('.w2f-pc-tabs').attr('role', 'tablist');
+				$('.w2f-pc-tabs a').each(function() {
+					var $a = $(this);
+					var targetId = $a.attr('href');
+					var $targetContent = $(targetId);
+					
+					// Set role and aria attributes
+					$a.attr('role', 'tab');
+					$a.attr('aria-selected', $a.closest('li').hasClass('active') ? 'true' : 'false');
+					
+					// Set aria-controls only if target content exists
+					if ($targetContent.length) {
+						$a.attr('aria-controls', targetId.replace('#', ''));
+						$targetContent.attr('role', 'tabpanel');
+						$targetContent.attr('id', targetId.replace('#', ''));
+					}
+				});
 			});
 
 			// Close configurator modal.
@@ -166,6 +360,10 @@
 						'transform': 'translateY(8px)',
 						'display': 'block'
 					});
+					// Re-initialize thumbnails in the new tab to ensure they display
+					setTimeout(function() {
+						self.initializeThumbnailPagination();
+					}, 50);
 					
 					// Remove old content class and animate new content in
 					setTimeout(function() {
@@ -190,10 +388,21 @@
 				}
 			});
 
-			// Component selection change (dropdown).
+			// Component selection change (dropdown/Select2).
 			$(document).on('change', '.component-select', function() {
-				var componentId = $(this).data('component-id');
-				var productId = $(this).val() ? parseInt($(this).val()) : 0;
+				var $select = $(this);
+				var componentId = $select.data('component-id');
+				var productId = $select.val() ? parseInt($select.val()) : 0;
+				
+				// Sync thumbnail selection if this is from mobile dropdown
+				// Only sync if the value actually changed to prevent circular loops
+				if ($select.closest('.w2f-pc-thumbnail-mobile-dropdown').length) {
+					var currentValue = $select.data('last-synced-value');
+					if (currentValue !== productId) {
+						$select.data('last-synced-value', productId);
+						self.syncThumbnailFromMobileDropdown(componentId, productId);
+					}
+				}
 
 				// Handle "None" option (value 0) for optional components.
 				if (productId === 0 || productId === '0') {
@@ -325,124 +534,6 @@
 				e.stopPropagation();
 			});
 
-			// Custom dropdown toggle.
-			$(document).on('click', '.w2f-pc-dropdown-selected', function(e) {
-				e.stopPropagation();
-				var $dropdown = $(this).closest('.w2f-pc-custom-dropdown');
-				var $options = $dropdown.find('.w2f-pc-dropdown-options');
-				
-				// Close other dropdowns.
-				$('.w2f-pc-dropdown-selected').not(this).removeClass('active');
-				$('.w2f-pc-dropdown-options').not($options).hide();
-				
-				// Toggle this dropdown.
-				$(this).toggleClass('active');
-				$options.toggle();
-			});
-
-			// Custom dropdown option selection.
-			$(document).on('click', '.w2f-pc-dropdown-option', function(e) {
-				e.stopPropagation();
-				var $option = $(this);
-				var $dropdown = $option.closest('.w2f-pc-custom-dropdown');
-				var componentId = $dropdown.data('component-id');
-				var productId = parseInt($option.data('product-id'));
-				var $hiddenInput = $dropdown.find('.component-select');
-				
-				// Handle "None" option (value 0).
-				if (productId === 0 || productId === '0') {
-					$hiddenInput.val(0);
-					delete self.currentConfiguration[componentId];
-					
-					// Update display for "None" option.
-					var $selected = $dropdown.find('.w2f-pc-dropdown-selected');
-					$selected.find('img').remove();
-					var $textWrapper = $selected.find('.w2f-pc-dropdown-text-wrapper');
-					if ($textWrapper.length) {
-						$textWrapper.find('.w2f-pc-dropdown-text').empty().text('None');
-					} else {
-						$selected.find('.w2f-pc-dropdown-text').empty().text('None');
-					}
-				} else {
-					$hiddenInput.val(productId);
-					self.currentConfiguration[componentId] = productId;
-					
-					// Update selected option.
-					$dropdown.find('.w2f-pc-dropdown-option').removeClass('selected');
-					$option.addClass('selected');
-					
-					// Update display - only show product name, not the price.
-					var $selected = $dropdown.find('.w2f-pc-dropdown-selected');
-					var $optionImage = $option.find('.w2f-pc-dropdown-option-image');
-					// Get image source and alt from the option.
-					var imageSrc = $optionImage.attr('src');
-					var imageAlt = $optionImage.attr('alt');
-					
-					// Get product name - prioritize data-product-name attribute, then clean text extraction.
-					var productName = $option.data('product-name');
-					if (!productName) {
-						// Fallback: get from option text, but clean it thoroughly.
-						var $optionText = $option.find('.w2f-pc-dropdown-option-text');
-						if ($optionText.length) {
-							// Remove any warning emoji spans first.
-							$optionText.find('.w2f-pc-warning-emoji').remove();
-							// Get text content and clean it.
-							productName = $optionText.text().trim();
-							// Remove warning emoji characters and price suffixes.
-							productName = productName.replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-						} else {
-							// Last resort: use image alt text.
-							productName = imageAlt || '';
-						}
-					}
-					
-					// Remove ALL images from the selected area (including any duplicates).
-					$selected.find('img').remove();
-					// Create a fresh image element (don't clone to avoid class conflicts).
-					var $newImage = $('<img>', {
-						src: imageSrc,
-						alt: imageAlt,
-						class: 'w2f-pc-dropdown-image'
-					});
-					// Get or create text wrapper
-					var $textWrapper = $selected.find('.w2f-pc-dropdown-text-wrapper');
-					var $textSpan = $selected.find('.w2f-pc-dropdown-text');
-					
-					if (!$textWrapper.length && $textSpan.length) {
-						// Create wrapper if it doesn't exist
-						$textWrapper = $('<span>', { class: 'w2f-pc-dropdown-text-wrapper' });
-						$textSpan.wrap($textWrapper);
-						$textSpan = $selected.find('.w2f-pc-dropdown-text');
-					}
-					
-					if ($textSpan.length) {
-						// Insert image before wrapper
-						if ($textWrapper.length) {
-							$textWrapper.before($newImage);
-						} else {
-							$textSpan.before($newImage);
-						}
-						// Clear and set text to avoid duplication.
-						$textSpan.empty().text(productName);
-					}
-				}
-				
-				// Close dropdown.
-				$selected.removeClass('active');
-				$dropdown.find('.w2f-pc-dropdown-options').hide();
-				
-				// Trigger change event.
-				$hiddenInput.trigger('change');
-			});
-
-			// Close dropdowns when clicking outside.
-			$(document).on('click', function(e) {
-				if (!$(e.target).closest('.w2f-pc-custom-dropdown').length) {
-					$('.w2f-pc-dropdown-selected').removeClass('active');
-					$('.w2f-pc-dropdown-options').hide();
-				}
-			});
-
 			// Thumbnail card click handler - select when clicking anywhere except quantity controls.
 			$(document).on('click', '.w2f-pc-thumbnail-card', function(e) {
 				// Ignore clicks on quantity controls.
@@ -487,6 +578,11 @@
 					self.currentConfiguration[componentId] = productId;
 				} else {
 					delete self.currentConfiguration[componentId];
+				}
+				
+				// Sync mobile dropdown selection (only if not syncing from dropdown to prevent circular loop)
+				if (!$radio.data('syncing-from-dropdown')) {
+					self.syncMobileDropdownFromThumbnail(componentId, productId);
 				}
 				
 				// Ensure we have the correct component - use data attribute to be precise.
@@ -542,6 +638,9 @@
 						self.currentQuantities[componentId] = quantity;
 					}
 				}
+
+				// Update specs immediately when thumbnail selection changes
+				self.updateSpecs();
 
 				// Debounce updates to prevent excessive AJAX calls.
 				clearTimeout(self.updateTimeout);
@@ -632,7 +731,7 @@
 					var $component = self.domCache.components[componentId] || $('.w2f-pc-component[data-component-id="' + componentId + '"]');
 					
 					if (searchTerm === '') {
-						$component.find('.w2f-pc-thumbnail-card, .w2f-pc-dropdown-option').removeClass('hidden');
+						$component.find('.w2f-pc-thumbnail-card').removeClass('hidden');
 						$component.find('.component-options select option').show();
 						$component.find('.w2f-pc-thumbnail-wrapper').each(function() {
 							self.updateThumbnailPage($(this));
@@ -649,18 +748,7 @@
 							}
 						});
 						
-						// Filter custom dropdown options.
-						$component.find('.w2f-pc-dropdown-option').each(function() {
-							var $option = $(this);
-							var productName = $option.find('.w2f-pc-dropdown-option-text').text().toLowerCase();
-							if (productName.indexOf(searchTerm) !== -1) {
-								$option.removeClass('hidden');
-							} else {
-								$option.addClass('hidden');
-							}
-						});
-					
-					// Filter standard dropdown options.
+						// Filter select dropdown options.
 					$component.find('.component-options select option').each(function() {
 						var $option = $(this);
 						var optionText = $option.text().toLowerCase();
@@ -697,17 +785,64 @@
 		},
 
 		/**
-		 * Get items per page based on screen size.
+		 * Sync mobile dropdown selection from thumbnail card selection.
+		 */
+		syncMobileDropdownFromThumbnail: function(componentId, productId) {
+			var $mobileDropdown = $('.w2f-pc-thumbnail-mobile-dropdown[data-component-id="' + componentId + '"]');
+			if (!$mobileDropdown.length) {
+				return;
+			}
+			
+			var $select = $mobileDropdown.find('select.component-select');
+			if ($select.length) {
+				// Check if the option exists before setting value
+				var $option = $select.find('option[value="' + productId + '"]');
+				if ($option.length) {
+					// Set value without triggering change to prevent circular sync loop
+					// The value is already set by the thumbnail selection, so we just update the select visually
+					$select.val(productId);
+					// Update the last-synced-value to prevent the change handler from syncing back
+					$select.data('last-synced-value', productId);
+					// Don't trigger change - this prevents infinite loop with syncThumbnailFromMobileDropdown
+				} else if (productId === 0 || productId === '0') {
+					// Handle "None" option
+					var $noneOption = $select.find('option[value="0"]');
+					if ($noneOption.length) {
+						$select.val('0');
+						$select.data('last-synced-value', '0');
+						// Don't trigger change - this prevents infinite loop
+					}
+				}
+			}
+		},
+
+		/**
+		 * Sync thumbnail card selection from mobile dropdown selection.
+		 */
+		syncThumbnailFromMobileDropdown: function(componentId, productId) {
+			var $thumbnailWrapper = $('.w2f-pc-thumbnail-wrapper[data-component-id="' + componentId + '"]');
+			if (!$thumbnailWrapper.length) {
+				return;
+			}
+			
+			var $radio = $thumbnailWrapper.find('.component-select-radio[value="' + productId + '"]');
+			if ($radio.length && !$radio.is(':checked')) {
+				// Set a flag to prevent circular sync
+				$radio.data('syncing-from-dropdown', true);
+				$radio.prop('checked', true).trigger('change');
+				$radio.removeData('syncing-from-dropdown');
+			}
+		},
+
+		/**
+		 * Get items per page based on screen size. Show 8 items per page for case/thumbnail grids.
 		 */
 		getItemsPerPage: function($wrapper) {
 			var width = $(window).width();
 			if (width <= 480) {
-				return 4; // 2 columns x 2 rows
-			} else if (width <= 768) {
-				return 6; // 3 columns x 2 rows
-			} else {
-				return 12; // 6 columns x 2 rows
+				return 4;
 			}
+			return 8;
 		},
 
 		/**
@@ -715,27 +850,38 @@
 		 */
 		initializeThumbnailPagination: function() {
 			var self = this;
+			// Find all thumbnail wrappers, including those in inactive tabs
 			$('.w2f-pc-thumbnail-wrapper').each(function() {
 				var $wrapper = $(this);
 				var componentId = $wrapper.data('component-id');
 				var $grid = $wrapper.find('.w2f-pc-thumbnail-grid');
 				var $cards = $grid.find('.w2f-pc-thumbnail-card');
+				
+				// Skip if no cards found
+				if (!$cards.length) {
+					return;
+				}
+				
 				var $pagination = $wrapper.find('.w2f-pc-thumbnail-pagination');
 				var $prevBtn = $pagination.find('.w2f-pc-pagination-prev');
 				var $nextBtn = $pagination.find('.w2f-pc-pagination-next');
 				var $currentSpan = $pagination.find('.w2f-pc-pagination-current');
 				var $totalSpan = $pagination.find('.w2f-pc-pagination-total');
 				
-				var totalItems = $cards.length;
+				// Filter out hidden cards (from search/filtering)
+				var $visibleCards = $cards.not('.hidden');
+				var totalItems = $visibleCards.length;
 				var itemsPerPage = self.getItemsPerPage($wrapper);
-				var totalPages = Math.ceil(totalItems / itemsPerPage);
+				var totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
 				
 				// Find selected item to determine initial page.
 				var $selected = $grid.find('.w2f-pc-thumbnail-card.selected');
 				var initialPage = 1;
-				if ($selected.length) {
-					var selectedIndex = $cards.index($selected);
-					initialPage = Math.floor(selectedIndex / itemsPerPage) + 1;
+				if ($selected.length && !$selected.hasClass('hidden')) {
+					var selectedIndex = $visibleCards.index($selected);
+					if (selectedIndex >= 0) {
+						initialPage = Math.floor(selectedIndex / itemsPerPage) + 1;
+					}
 				}
 				
 				// Store pagination state.
@@ -749,8 +895,8 @@
 					self.updateThumbnailPage($wrapper);
 				} else {
 					$pagination.hide();
-					// Show all items if only one page.
-					$cards.addClass('w2f-pc-thumbnail-visible');
+					// Show all visible items if only one page.
+					$visibleCards.addClass('w2f-pc-thumbnail-visible');
 				}
 			});
 		},
@@ -762,7 +908,8 @@
 			var self = this;
 			var currentPage = $wrapper.data('current-page') || 1;
 			var totalPages = $wrapper.data('total-pages') || 1;
-			var itemsPerPage = $wrapper.data('items-per-page') || 12;
+			// Recalculate items per page in case screen size changed (defaults to 8)
+			var itemsPerPage = $wrapper.data('items-per-page') || self.getItemsPerPage($wrapper);
 			var $grid = $wrapper.find('.w2f-pc-thumbnail-grid');
 			var $cards = $grid.find('.w2f-pc-thumbnail-card');
 			var $visibleCards = $cards.not('.hidden');
@@ -833,79 +980,10 @@
 			// Set default selections.
 			var self = this;
 			$.each(this.defaultConfiguration, function(componentId, productId) {
-				// Handle standard dropdown selects.
+				// Handle dropdown selects (including Select2).
 				var $standardSelect = $('.component-select[data-component-id="' + componentId + '"]');
 				if ($standardSelect.is('select')) {
-					$standardSelect.val(productId);
-				}
-				
-				// Handle custom dropdowns with images.
-				var $customDropdown = $('.w2f-pc-custom-dropdown[data-component-id="' + componentId + '"]');
-				if ($customDropdown.length) {
-					var $hiddenInput = $customDropdown.find('.component-select');
-					$hiddenInput.val(productId);
-					
-					var $selectedOption = $customDropdown.find('.w2f-pc-dropdown-option[data-product-id="' + productId + '"]');
-					if ($selectedOption.length) {
-						$customDropdown.find('.w2f-pc-dropdown-option').removeClass('selected');
-						$selectedOption.addClass('selected');
-						
-						// Update display - only show product name, not the price.
-						var $selected = $customDropdown.find('.w2f-pc-dropdown-selected');
-						
-						// Get image source and alt from the option.
-						var $optionImage = $selectedOption.find('.w2f-pc-dropdown-option-image');
-						var imageSrc = $optionImage.attr('src');
-						var imageAlt = $optionImage.attr('alt');
-						
-						// Get product name - prioritize data-product-name attribute, then clean text extraction.
-						var productName = $selectedOption.data('product-name');
-						if (!productName) {
-							// Fallback: get from option text, but clean it thoroughly.
-							var $optionText = $selectedOption.find('.w2f-pc-dropdown-option-text');
-							if ($optionText.length) {
-								// Remove any warning emoji spans first.
-								$optionText.find('.w2f-pc-warning-emoji').remove();
-								// Get text content and clean it.
-								productName = $optionText.text().trim();
-								// Remove warning emoji characters and price suffixes.
-								productName = productName.replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-							} else {
-								// Last resort: use image alt text.
-								productName = imageAlt || '';
-							}
-						}
-						
-						// Remove ALL images from the selected area (including any duplicates).
-						$selected.find('img').remove();
-						// Create a fresh image element (don't clone to avoid class conflicts).
-						var $newImage = $('<img>', {
-							src: imageSrc,
-							alt: imageAlt,
-							class: 'w2f-pc-dropdown-image'
-						});
-						// Get or create text wrapper
-						var $textWrapper = $selected.find('.w2f-pc-dropdown-text-wrapper');
-						var $textSpan = $selected.find('.w2f-pc-dropdown-text');
-						
-						if (!$textWrapper.length && $textSpan.length) {
-							// Create wrapper if it doesn't exist
-							$textWrapper = $('<span>', { class: 'w2f-pc-dropdown-text-wrapper' });
-							$textSpan.wrap($textWrapper);
-							$textSpan = $selected.find('.w2f-pc-dropdown-text');
-						}
-						
-						if ($textSpan.length) {
-							// Insert image before wrapper
-							if ($textWrapper.length) {
-								$textWrapper.before($newImage);
-							} else {
-								$textSpan.before($newImage);
-							}
-							// Clear and set text to avoid duplication.
-							$textSpan.empty().text(productName);
-						}
-					}
+					$standardSelect.val(productId).trigger('change');
 				}
 				
 				// Handle thumbnail radio buttons.
@@ -917,19 +995,23 @@
 					self.updateThumbnailQuantityInputs(componentId, productId);
 				}
 				
-				// First, remove selected class and indicators from all options in this component.
-				$component.find('.w2f-pc-thumbnail-option').removeClass('selected');
+				// First, remove selected class and indicators from all cards in this component.
+				$component.find('.w2f-pc-thumbnail-card').removeClass('selected');
 				$component.find('.selected-indicator').remove();
 				
-				// Then set the radio and add selected class to the correct option.
-				$radio.prop('checked', true);
-				var $option = $radio.closest('.w2f-pc-thumbnail-option');
-				if ($option.length) {
-					$option.addClass('selected');
-					// Add indicator if it doesn't exist.
-					if ($option.find('.selected-indicator').length === 0) {
-						$option.find('.thumbnail-image').append('<span class="selected-indicator">✓</span>');
+				// Then set the radio and add selected class to the correct card.
+				if ($radio.length) {
+					$radio.prop('checked', true);
+					var $card = $radio.closest('.w2f-pc-thumbnail-card');
+					if ($card.length) {
+						$card.addClass('selected');
+						// Add indicator if it doesn't exist.
+						if ($card.find('.selected-indicator').length === 0) {
+							$card.find('.thumbnail-image').append('<span class="selected-indicator">✓</span>');
+						}
 					}
+					// Sync mobile dropdown selection
+					self.syncMobileDropdownFromThumbnail(componentId, productId);
 				}
 				
 				// Update relative prices for this component.
@@ -938,6 +1020,8 @@
 			
 			// Calculate initial price.
 			this.calculatePrice();
+			// Update specs after initialization to show default selections
+			this.updateSpecs();
 		},
 
 		updateConfiguration: function(componentId) {
@@ -1007,10 +1091,13 @@
 							'color': 'var(--w2f-pc-color-accent)'
 						});
 						setTimeout(function() {
-							$priceElement.html(response.data.price_html || self.formatPrice(totalPrice)).css({
+							var priceHtml = response.data.price_html || self.formatPrice(totalPrice);
+							$priceElement.html(priceHtml).css({
 								'transform': 'scale(1)',
 								'color': ''
 							});
+							// Sync header total price
+							$('.w2f-pc-header-total-price').html(priceHtml);
 							pricePromise.resolve();
 						}, 100);
 					} else {
@@ -1186,11 +1273,17 @@
 							var allowedProductIds = componentData.product_ids || [];
 							var productWarnings = componentData.warnings || {};
 							
-							// Get all product IDs for this component (cache this).
+							// Get all product IDs for this component (thumbnails and/or select options).
 							var allProductIds = [];
 							$component.find('.w2f-pc-thumbnail-option').each(function() {
-								var productId = parseInt($(this).data('product-id'));
+								var productId = parseInt($(this).data('product-id'), 10);
 								if (productId) {
+									allProductIds.push(productId);
+								}
+							});
+							$component.find('select.component-select option').each(function() {
+								var productId = parseInt($(this).val(), 10);
+								if (productId && allProductIds.indexOf(productId) === -1) {
 									allProductIds.push(productId);
 								}
 							});
@@ -1270,65 +1363,9 @@
 								}
 							});
 
-							// Filter dropdown options.
-							$component.find('.w2f-pc-dropdown-option').each(function() {
-								var $option = $(this);
-								var productId = parseInt($option.data('product-id'));
-								var $optionText = $option.find('.w2f-pc-dropdown-option-text');
-								
-								if (!productId) {
-									return; // Skip if no product ID
-								}
-								
-								// Get clean text (remove any existing warning emoji or HTML).
-								var currentText = '';
-								if ($optionText.length) {
-									// Remove any existing warning emoji span first.
-									$optionText.find('.w2f-pc-warning-emoji').remove();
-									// Get text content, removing warning emoji.
-									currentText = $optionText.text().replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').trim();
-								}
-								
-								$option.removeClass('w2f-pc-disabled').css('opacity', '1');
-								$option.css('pointer-events', 'auto');
-								
-								var hasErrors = isFilteringActive && !allowedProductIds.includes(productId);
-								
-								if (hasErrors) {
-									// Reset to clean text without warning.
-									if ($optionText.length && currentText) {
-										$optionText.text(currentText);
-									}
-									$option.addClass('w2f-pc-disabled').css('opacity', '0.5');
-									$option.css('pointer-events', 'none');
-									// Don't show warnings for products with errors.
-								} else {
-									// Check warnings - handle both string and number keys.
-									var hasWarnings = false;
-									if (productWarnings[productId] && productWarnings[productId].length > 0) {
-										hasWarnings = true;
-									} else if (productWarnings[String(productId)] && productWarnings[String(productId)].length > 0) {
-										hasWarnings = true;
-									}
-									
-									// Only show warnings for products that are allowed (no errors).
-									if (hasWarnings) {
-										// Get the actual warnings array (handle both key types).
-										var warnings = productWarnings[productId] || productWarnings[String(productId)] || [];
-										// Add warning emoji to product name.
-										if ($optionText.length && currentText) {
-											$optionText.html('<span class="w2f-pc-warning-emoji">⚠️</span> ' + self.escapeHtml(currentText));
-										}
-									} else {
-										// Reset to clean text without warning.
-										if ($optionText.length && currentText) {
-											$optionText.text(currentText);
-										}
-									}
-								}
-							});
-
-							// Filter standard dropdown options.
+							// Filter select dropdown options (including Select2).
+							var selectDisabledCount = 0;
+							var selectTotalCount = 0;
 							$component.find('select.component-select option').each(function() {
 								var $option = $(this);
 								var productId = parseInt($option.val());
@@ -1336,10 +1373,11 @@
 								if (!productId) {
 									return; // Skip if no product ID
 								}
-								
+								selectTotalCount++;
 								var hasErrors = isFilteringActive && !allowedProductIds.includes(productId);
 								
 								if (hasErrors) {
+									selectDisabledCount++;
 									var currentText = $option.text().replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').trim();
 									$option.text(currentText);
 									$option.prop('disabled', true);
@@ -1369,7 +1407,7 @@
 				},
 				error: function() {
 					// On error, show all products (fail open).
-					$('.w2f-pc-thumbnail-option, .w2f-pc-dropdown-option').removeClass('w2f-pc-disabled').css('opacity', '1').css('pointer-events', 'auto');
+					$('.w2f-pc-thumbnail-option').removeClass('w2f-pc-disabled').css('opacity', '1').css('pointer-events', 'auto');
 					$('input[type="radio"]').prop('disabled', false);
 					$('select.component-select option').prop('disabled', false);
 					$('.w2f-pc-warning-indicator').remove();
@@ -1409,10 +1447,13 @@
 						});
 						
 						setTimeout(function() {
-							$priceElement.html(response.data.price_html || self.formatPrice(totalPrice)).css({
+							var priceHtml = response.data.price_html || self.formatPrice(totalPrice);
+							$priceElement.html(priceHtml).css({
 								'transform': 'scale(1)',
 								'color': ''
 							});
+							// Sync header total price
+							$('.w2f-pc-header-total-price').html(priceHtml);
 						}, 100);
 					} else {
 						// Fallback to client-side calculation if AJAX fails.
@@ -1445,18 +1486,12 @@
 					if ($selectedThumbnail.length) {
 						optionPrice = parseFloat($selectedThumbnail.attr('data-price')) || 0;
 					} else {
-						// Try custom dropdown option.
-						var $customDropdownOption = $component.find('.w2f-pc-dropdown-option[data-product-id="' + selectedProductId + '"]');
-						if ($customDropdownOption.length) {
-							optionPrice = parseFloat($customDropdownOption.attr('data-price')) || 0;
-						} else {
-							// Try standard dropdown option.
-							var $select = $component.find('.component-select');
-							if ($select.length && $select.is('select')) {
-								var $option = $select.find('option[value="' + selectedProductId + '"]');
-								if ($option.length) {
-									optionPrice = parseFloat($option.attr('data-price')) || 0;
-								}
+						// Try select dropdown option (including Select2).
+						var $select = $component.find('select.component-select');
+						if ($select.length) {
+							var $option = $select.find('option[value="' + selectedProductId + '"]');
+							if ($option.length) {
+								optionPrice = parseFloat($option.attr('data-price')) || 0;
 							}
 						}
 					}
@@ -1475,10 +1510,13 @@
 			});
 			
 			setTimeout(function() {
-				$priceElement.html(self.formatPrice(totalPrice)).css({
+				var priceHtml = self.formatPrice(totalPrice);
+				$priceElement.html(priceHtml).css({
 					'transform': 'scale(1)',
 					'color': ''
 				});
+				// Sync header total price
+				$('.w2f-pc-header-total-price').html(priceHtml);
 			}, 150);
 		},
 
@@ -1491,9 +1529,15 @@
 			// Get the currently selected product's price (absolute price, already discounted if applicable).
 			var selectedProductPrice = 0;
 			if (selectedProductId) {
-				var $selectedOption = $component.find('[data-product-id="' + selectedProductId + '"]');
+				var $selectedOption = $component.find('.w2f-pc-thumbnail-option[data-product-id="' + selectedProductId + '"]');
 				if ($selectedOption.length) {
 					selectedProductPrice = parseFloat($selectedOption.attr('data-price')) || 0;
+				}
+				if (selectedProductPrice === 0) {
+					var $selectOption = $component.find('select.component-select option[value="' + selectedProductId + '"]');
+					if ($selectOption.length) {
+						selectedProductPrice = parseFloat($selectOption.attr('data-price')) || 0;
+					}
 				}
 			}
 			
@@ -1529,34 +1573,6 @@
 					} else {
 						priceHtml = self.formatPrice(optionPrice);
 					}
-				} else {
-					// For other components, show relative price.
-					if (Math.abs(relativePrice) < 0.01) {
-						// Price difference is essentially zero (within rounding).
-						priceHtml = '—';
-					} else if (relativePrice > 0) {
-						priceHtml = '+' + self.formatPrice(relativePrice);
-					} else {
-						// For negative prices, ensure the minus sign is displayed.
-						priceHtml = '-' + self.formatPrice(Math.abs(relativePrice));
-					}
-				}
-				
-				$priceSpan.html(priceHtml);
-			});
-
-			// Update custom dropdown option prices.
-			$component.find('.w2f-pc-dropdown-option').each(function() {
-				var $option = $(this);
-				var optionPrice = parseFloat($option.attr('data-price')) || 0;
-				var relativePrice = optionPrice - selectedProductPrice;
-				var $priceSpan = $option.find('.w2f-pc-dropdown-option-price');
-				
-				var priceHtml = '';
-				
-				// For warranty components, always show absolute price.
-				if (isWarranty) {
-					priceHtml = self.formatPrice(optionPrice);
 				} else {
 					// For other components, show relative price.
 					if (Math.abs(relativePrice) < 0.01) {
@@ -1639,12 +1655,20 @@
 					formatted = formatted.replace(/\B(?=(\d{3})+(?!\d))/g, currency.thousand_sep);
 				}
 				
+				// Decode HTML entities in currency symbol (e.g., &pound; -> £)
+				var symbol = currency.symbol;
+				if (symbol && symbol.indexOf('&') === 0) {
+					var tempDiv = document.createElement('div');
+					tempDiv.innerHTML = symbol;
+					symbol = tempDiv.textContent || tempDiv.innerText || symbol;
+				}
+				
 				// Format with currency symbol based on position.
 				var priceStr = formatted.replace('.', currency.decimal_sep);
 				if (currency.position === 'left' || currency.position === 'left_space') {
-					return currency.symbol + (currency.position === 'left_space' ? ' ' : '') + priceStr;
+					return symbol + (currency.position === 'left_space' ? ' ' : '') + priceStr;
 				} else {
-					return priceStr + (currency.position === 'right_space' ? ' ' : '') + currency.symbol;
+					return priceStr + (currency.position === 'right_space' ? ' ' : '') + symbol;
 				}
 			}
 			// Fallback formatting.
@@ -1675,41 +1699,26 @@
 				var productName = '';
 				var productImage = '';
 				
-				// Try to get product name from custom dropdown.
-				var $customDropdown = $component.find('.w2f-pc-custom-dropdown');
-				if ($customDropdown.length) {
-					// First try to get from the selected display (most reliable).
-					var $selectedDisplay = $customDropdown.find('.w2f-pc-dropdown-selected .w2f-pc-dropdown-text');
-					if ($selectedDisplay.length) {
-						productName = $selectedDisplay.text().trim();
-					}
-					// Fallback to selected option if display doesn't have text.
-					if (!productName) {
-						var $selectedOption = $customDropdown.find('.w2f-pc-dropdown-option.selected');
-						if ($selectedOption.length) {
-							var optionText = $selectedOption.find('.w2f-pc-dropdown-option-text').text().trim();
-							// Remove warning emoji and any price suffixes.
-							productName = optionText.replace(/⚠️\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-						}
-					}
-				}
-				
-				// Try to get product name from standard dropdown.
-				if (!productName) {
-					var $select = $component.find('.component-select');
-					if ($select.length && $select.is('select')) {
-						var selectedOption = $select.find('option:selected');
-						if (selectedOption.length && selectedOption.val()) {
+				// Get product name from Select2 dropdown (for dropdown-mode components)
+				// Also check mobile dropdown for thumbnail components
+				var $select = $component.find('.component-select');
+				if ($select.length && $select.is('select')) {
+					var selectedOption = $select.find('option:selected');
+					if (selectedOption.length && selectedOption.val()) {
+						productName = selectedOption.data('product-name') || '';
+						// If no product name in data attribute, extract from text (remove price suffix)
+						if (!productName) {
 							var optionText = selectedOption.text().trim();
-							// Remove price in parentheses if present (e.g., "Product Name (+£10)")
 							productName = optionText.replace(/\s*\([^)]*\)\s*$/, '').trim();
 						}
+						// Get image URL if available
+						productImage = selectedOption.data('image-url') || '';
 					}
 				}
 				
-				// Try to get product name and image from thumbnail.
+				// Try to get product name and image from thumbnail card.
 				if (!productName) {
-					var $thumbnail = $component.find('.w2f-pc-thumbnail-option.selected');
+					var $thumbnail = $component.find('.w2f-pc-thumbnail-card.selected');
 					if ($thumbnail.length) {
 						var $nameElement = $thumbnail.find('.thumbnail-name');
 						if ($nameElement.length) {
@@ -1719,6 +1728,10 @@
 						if ($img.length) {
 							productImage = $img.attr('src');
 						}
+						// Also try data-product-name attribute
+						if (!productName && $thumbnail.attr('data-product-name')) {
+							productName = $thumbnail.attr('data-product-name').trim();
+						}
 					}
 				}
 
@@ -1726,42 +1739,16 @@
 				componentTitle = componentTitle.replace(/\s+/g, ' ').trim();
 				productName = productName.replace(/\s+/g, ' ').trim();
 
-				// If we still don't have a product name, try to get it from the hidden input value.
-				if (!productName) {
-					var $hiddenInput = $component.find('.component-select[type="hidden"]');
-					if ($hiddenInput.length && $hiddenInput.val()) {
-						// Try to find the option with this product ID.
-						var selectedProductId = parseInt($hiddenInput.val());
-						var $option = $component.find('[data-product-id="' + selectedProductId + '"]');
-						if ($option.length) {
-							// First try data-product-name attribute (most reliable).
-							if ($option.attr('data-product-name')) {
-								productName = $option.attr('data-product-name').trim();
-							} else {
-								// Try thumbnail name.
-								var $thumbName = $option.find('.thumbnail-name');
-								if ($thumbName.length) {
-									productName = $thumbName.text().trim();
-								} else {
-									// Try dropdown option text.
-									var $optText = $option.find('.w2f-pc-dropdown-option-text');
-									if ($optText.length) {
-										productName = $optText.text().trim().replace(/⚠️\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-									} else {
-										// Try standard select option.
-										var $selectOption = $component.find('select.component-select option[value="' + selectedProductId + '"]');
-										if ($selectOption.length) {
-											// First try data-product-name attribute.
-											if ($selectOption.attr('data-product-name')) {
-												productName = $selectOption.attr('data-product-name').trim();
-											} else {
-												var optText = $selectOption.text().trim();
-												productName = optText.replace(/\s*\([^)]*\)\s*$/, '').trim();
-											}
-										}
-									}
-								}
-							}
+				// If we still don't have a product name, try select option by productId (e.g. Select2 may not have updated :selected yet).
+				if (!productName && productId) {
+					var $selectOption = $component.find('select.component-select option[value="' + productId + '"]');
+					if ($selectOption.length) {
+						productName = $selectOption.attr('data-product-name');
+						if (productName) {
+							productName = productName.trim();
+						} else {
+							var optText = $selectOption.text().trim();
+							productName = optText.replace(/\s*\([^)]*\)\s*$/, '').trim();
 						}
 					}
 				}
@@ -1785,10 +1772,14 @@
 
 				// If we have a component title but no product name, use a fallback.
 				if (componentTitle && !productName) {
-					// Try to get any text from the component that might indicate a selection.
-					var $selectedText = $component.find('.w2f-pc-dropdown-selected, .w2f-pc-thumbnail-option.selected');
-					if ($selectedText.length) {
-						productName = $selectedText.text().trim().replace(/⚠️\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
+					var $selectedCard = $component.find('.w2f-pc-thumbnail-card.selected');
+					if ($selectedCard.length) {
+						var $nameElement = $selectedCard.find('.thumbnail-name');
+						if ($nameElement.length) {
+							productName = $nameElement.text().trim().replace(/⚠️\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
+						} else if ($selectedCard.attr('data-product-name')) {
+							productName = $selectedCard.attr('data-product-name').trim();
+						}
 					}
 				}
 
@@ -2043,83 +2034,10 @@
 					
 					// Update UI.
 					$.each(this.currentConfiguration, function(componentId, productId) {
-						// Update standard dropdown.
-						var $standardSelect = $('.component-select[data-component-id="' + componentId + '"]');
-						if ($standardSelect.is('select')) {
-							$standardSelect.val(productId).trigger('change');
+						var $select = $('.component-select[data-component-id="' + componentId + '"]');
+						if ($select.length && $select.is('select')) {
+							$select.val(productId).trigger('change');
 						}
-						
-						// Update custom dropdown.
-						var $customDropdown = $('.w2f-pc-custom-dropdown[data-component-id="' + componentId + '"]');
-						if ($customDropdown.length) {
-							var $hiddenInput = $customDropdown.find('.component-select');
-							$hiddenInput.val(productId);
-							
-							var $selectedOption = $customDropdown.find('.w2f-pc-dropdown-option[data-product-id="' + productId + '"]');
-							if ($selectedOption.length) {
-								$customDropdown.find('.w2f-pc-dropdown-option').removeClass('selected');
-								$selectedOption.addClass('selected');
-								
-								// Update display - only show product name, not the price.
-								var $selected = $customDropdown.find('.w2f-pc-dropdown-selected');
-								
-								// Get image source and alt from the option.
-								var $optionImage = $selectedOption.find('.w2f-pc-dropdown-option-image');
-								var imageSrc = $optionImage.attr('src');
-								var imageAlt = $optionImage.attr('alt');
-								
-								// Get product name - prioritize data-product-name attribute, then clean text extraction.
-								var productName = $selectedOption.data('product-name');
-								if (!productName) {
-									// Fallback: get from option text, but clean it thoroughly.
-									var $optionText = $selectedOption.find('.w2f-pc-dropdown-option-text');
-									if ($optionText.length) {
-										// Remove any warning emoji spans first.
-										$optionText.find('.w2f-pc-warning-emoji').remove();
-										// Get text content and clean it.
-										productName = $optionText.text().trim();
-										// Remove warning emoji characters and price suffixes.
-										productName = productName.replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-									} else {
-										// Last resort: use image alt text.
-										productName = imageAlt || '';
-									}
-								}
-								
-								// Remove ALL images from the selected area (including any duplicates).
-								$selected.find('img').remove();
-								// Create a fresh image element (don't clone to avoid class conflicts).
-								var $newImage = $('<img>', {
-									src: imageSrc,
-									alt: imageAlt,
-									class: 'w2f-pc-dropdown-image'
-								});
-								// Get or create text wrapper
-								var $textWrapper = $selected.find('.w2f-pc-dropdown-text-wrapper');
-								var $textSpan = $selected.find('.w2f-pc-dropdown-text');
-								
-								if (!$textWrapper.length && $textSpan.length) {
-									// Create wrapper if it doesn't exist
-									$textWrapper = $('<span>', { class: 'w2f-pc-dropdown-text-wrapper' });
-									$textSpan.wrap($textWrapper);
-									$textSpan = $selected.find('.w2f-pc-dropdown-text');
-								}
-								
-								if ($textSpan.length) {
-									// Insert image before wrapper
-									if ($textWrapper.length) {
-										$textWrapper.before($newImage);
-									} else {
-										$textSpan.before($newImage);
-									}
-									// Clear and set text to avoid duplication.
-									$textSpan.empty().text(productName);
-								}
-								
-								$hiddenInput.trigger('change');
-							}
-						}
-						
 						// Update thumbnail.
 						var $radio = $('.component-select-radio[data-component-id="' + componentId + '"][value="' + productId + '"]');
 						if ($radio.length) {
@@ -2150,84 +2068,10 @@
 				
 				// Update UI.
 				$.each(this.currentConfiguration, function(componentId, productId) {
-					// Update standard dropdown.
 					var $standardSelect = $('.component-select[data-component-id="' + componentId + '"]');
 					if ($standardSelect.is('select')) {
 						$standardSelect.val(productId).trigger('change');
 					}
-					
-					// Update custom dropdown.
-					var $customDropdown = $('.w2f-pc-custom-dropdown[data-component-id="' + componentId + '"]');
-					if ($customDropdown.length) {
-						var $hiddenInput = $customDropdown.find('.component-select');
-						$hiddenInput.val(productId);
-						
-						var $selectedOption = $customDropdown.find('.w2f-pc-dropdown-option[data-product-id="' + productId + '"]');
-						if ($selectedOption.length) {
-							$customDropdown.find('.w2f-pc-dropdown-option').removeClass('selected');
-							$selectedOption.addClass('selected');
-							
-							// Update display - only show product name, not the price.
-							var $selected = $customDropdown.find('.w2f-pc-dropdown-selected');
-							
-							// Get image source and alt from the option.
-							var $optionImage = $selectedOption.find('.w2f-pc-dropdown-option-image');
-							var imageSrc = $optionImage.attr('src');
-							var imageAlt = $optionImage.attr('alt');
-							
-							// Get product name - prioritize data-product-name attribute, then clean text extraction.
-							var productName = $selectedOption.data('product-name');
-							if (!productName) {
-								// Fallback: get from option text, but clean it thoroughly.
-								var $optionText = $selectedOption.find('.w2f-pc-dropdown-option-text');
-								if ($optionText.length) {
-									// Remove any warning emoji spans first.
-									$optionText.find('.w2f-pc-warning-emoji').remove();
-									// Get text content and clean it.
-									productName = $optionText.text().trim();
-									// Remove warning emoji characters and price suffixes.
-									productName = productName.replace(/⚠️\s*/g, '').replace(/\u26A0\uFE0F\s*/g, '').replace(/\s*[\(\[].*?[\)\]]\s*$/, '').trim();
-								} else {
-									// Last resort: use image alt text.
-									productName = imageAlt || '';
-								}
-							}
-							
-							// Remove ALL images from the selected area (including any duplicates).
-							$selected.find('img').remove();
-							// Create a fresh image element (don't clone to avoid class conflicts).
-							var $newImage = $('<img>', {
-								src: imageSrc,
-								alt: imageAlt,
-								class: 'w2f-pc-dropdown-image'
-							});
-							// Insert the image before the text span.
-							// Get or create text wrapper
-							var $textWrapper = $selected.find('.w2f-pc-dropdown-text-wrapper');
-							var $textSpan = $selected.find('.w2f-pc-dropdown-text');
-							
-							if (!$textWrapper.length && $textSpan.length) {
-								// Create wrapper if it doesn't exist
-								$textWrapper = $('<span>', { class: 'w2f-pc-dropdown-text-wrapper' });
-								$textSpan.wrap($textWrapper);
-								$textSpan = $selected.find('.w2f-pc-dropdown-text');
-							}
-							
-							if ($textSpan.length) {
-								// Insert image before wrapper
-								if ($textWrapper.length) {
-									$textWrapper.before($newImage);
-								} else {
-									$textSpan.before($newImage);
-								}
-								// Clear and set text to avoid duplication.
-								$textSpan.empty().text(productName);
-							}
-							
-							$hiddenInput.trigger('change');
-						}
-					}
-					
 					// Update thumbnail.
 					var $radio = $('.component-select-radio[data-component-id="' + componentId + '"][value="' + productId + '"]');
 					if ($radio.length) {
@@ -2444,6 +2288,7 @@
 		},
 
 		closeModal: function() {
+			this.destroySelect2();
 			$('.w2f-pc-modal-overlay').removeClass('active');
 			$('body').css('overflow', '');
 		},

@@ -132,8 +132,12 @@ class W2F_PC_Display {
 		
 		// Enqueue jsPDF library for PDF generation.
 		wp_enqueue_script( 'jspdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', array(), '2.5.1', true );
-		
-		wp_enqueue_script( 'w2f-pc-configurator', W2F_PC()->plugin_url() . '/assets/js/frontend/configurator.js', array( 'jquery', 'wc-add-to-cart', 'jspdf' ), W2F_PC()->plugin_version(), true );
+
+		// SelectWoo (Select2) for configurator dropdowns.
+		wp_enqueue_script( 'selectWoo' );
+		wp_enqueue_style( 'select2' );
+
+		wp_enqueue_script( 'w2f-pc-configurator', W2F_PC()->plugin_url() . '/assets/js/frontend/configurator.js', array( 'jquery', 'wc-add-to-cart', 'jspdf', 'selectWoo' ), W2F_PC()->plugin_version(), true );
 		wp_enqueue_script( 'w2f-pc-compatibility', W2F_PC()->plugin_url() . '/assets/js/frontend/compatibility.js', array( 'jquery', 'w2f-pc-configurator' ), W2F_PC()->plugin_version(), true );
 		wp_enqueue_script( 'w2f-pc-price-calculator', W2F_PC()->plugin_url() . '/assets/js/frontend/price-calculator.js', array( 'jquery', 'w2f-pc-configurator' ), W2F_PC()->plugin_version(), true );
 		wp_enqueue_style( 'w2f-pc-frontend', W2F_PC()->plugin_url() . '/assets/css/frontend.css', array( 'w2f-pc-red-hat-text' ), W2F_PC()->plugin_version() );
