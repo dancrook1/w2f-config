@@ -54,6 +54,9 @@ class W2F_PC_Display {
 		// Filter WooCommerce price display to ensure configurator products show price with tax.
 		add_filter( 'woocommerce_get_price_html', array( $this, 'filter_price_html' ), 10, 2 );
 		
+		// Bricks Builder: Replace product price when using {woo_product_price} dynamic data.
+		add_filter( 'bricks/dynamic_data/format_value', array( $this, 'filter_bricks_product_price' ), 10, 5 );
+		
 		// Hide quantity input for configurator products.
 		add_filter( 'woocommerce_quantity_input_args', array( $this, 'hide_quantity_input' ), 10, 2 );
 	}
@@ -101,6 +104,40 @@ class W2F_PC_Display {
 		} finally {
 			$processing_price_html = false;
 		}
+	}
+
+	/**
+	 * Bricks Builder: Replace product price for configurator products in dynamic data.
+	 *
+	 * @param  mixed  $value    Rendered value.
+	 * @param  string $tag      Dynamic data tag (e.g. woo_product_price).
+	 * @param  int    $post_id  Post/product ID.
+	 * @param  array  $filters  Tag filters.
+	 * @param  string $context  Output context.
+	 * @return mixed
+	 */
+	public function filter_bricks_product_price( $value, $tag, $post_id, $filters, $context ) {
+		if ( ! in_array( $tag, array( 'woo_product_price', 'woo_product_regular_price' ), true ) ) {
+			return $value;
+		}
+		$product = $post_id ? wc_get_product( $post_id ) : false;
+		if ( ! $product || ! w2f_pc_is_configurator_product( $product ) ) {
+			return $value;
+		}
+		$configurator_product = w2f_pc_get_configurator_product( $product );
+		$default_configuration = $configurator_product->get_default_configuration();
+		if ( empty( $default_configuration ) ) {
+			return $value;
+		}
+		$calculated_price = $configurator_product->calculate_configuration_price( $default_configuration, true );
+		if ( $calculated_price <= 0 ) {
+			return $value;
+		}
+		// For :value filter, return raw number; otherwise return formatted HTML.
+		if ( ! empty( $filters['value'] ) ) {
+			return (string) $calculated_price;
+		}
+		return wc_price( $calculated_price );
 	}
 
 	/**

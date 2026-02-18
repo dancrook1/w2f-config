@@ -22,6 +22,7 @@
 	--w2f-pc-color-warning: #f0b849;
 	--w2f-pc-color-error: #dc3545;
 	--w2f-pc-color-info: #007bff;
+	--w2f-pc-neon-accent: #f5891f;
 	
 	/* Neutral Colors - Wired2Fire Palette */
 	--w2f-pc-color-white: #ffffff;
@@ -105,15 +106,17 @@
 	--w2f-pc-transition-base: 300ms ease;
 	--w2f-pc-transition-slow: 500ms ease;
 	
-	/* Z-Index Scale */
+	/* Z-Index Scale – modal above Bricks/section content (e.g. testimonial tabs) */
 	--w2f-pc-z-base: 1;
 	--w2f-pc-z-dropdown: 1000;
 	--w2f-pc-z-sticky: 1020;
 	--w2f-pc-z-fixed: 1030;
-	--w2f-pc-z-modal-backdrop: 1040;
-	--w2f-pc-z-modal: 1050;
-	--w2f-pc-z-popover: 1060;
-	--w2f-pc-z-tooltip: 1070;
+	--w2f-pc-z-modal-backdrop: 999990;
+	--w2f-pc-z-modal: 999991;
+	--w2f-pc-z-popover: 999992;
+	--w2f-pc-z-tooltip: 999993;
+	/* Offset so modal is not covered by sticky header #brx-header */
+	--w2f-pc-header-offset: 92px;
 }
 
 /* ============================================
@@ -183,7 +186,8 @@
 }
 
 /* ============================================
-   ACTION BUTTONS
+   ACTION BUTTONS (Configure + Add to Cart)
+   High specificity + !important to override Bricks/theme
    ============================================ */
 
 .w2f-pc-action-buttons {
@@ -193,10 +197,67 @@
 	flex-wrap: wrap;
 }
 
-/* Let Bricks/theme control buttons with .w2f-btn-primary / .w2f-btn-second - no plugin overrides */
-.w2f-pc-configurator-wrapper .w2f-btn-primary,
-.w2f-pc-configurator-wrapper .w2f-btn-second {
-	font-family: inherit;
+/* Shared: both buttons – force over Bricks .button, .bricks-button, etc. */
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-configure-button,
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-add-default-to-cart {
+	appearance: none !important;
+	font-family: var(--w2f-pc-font-family) !important;
+	font-size: 0.875rem !important;
+	font-weight: 700 !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.08em !important;
+	line-height: 1.2 !important;
+	border-radius: 12px !important;
+	padding: 12px 24px !important;
+	min-height: 44px !important;
+	cursor: pointer !important;
+	transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease !important;
+	outline: none !important;
+	text-decoration: none !important;
+	box-sizing: border-box !important;
+}
+
+/* Configure (primary): orange CTA, white text */
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-configure-button {
+	background: var(--w2f-pc-neon-accent) !important;
+	background-color: var(--w2f-pc-neon-accent) !important;
+	color: #ffffff !important;
+	border: none !important;
+	box-shadow: 0 0 20px rgba(245, 137, 31, 0.35) !important;
+}
+
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-configure-button:hover {
+	background: #ffffff !important;
+	background-color: #ffffff !important;
+	color: #000000 !important;
+	box-shadow: 0 0 28px rgba(255, 255, 255, 0.45) !important;
+	transform: translateY(-2px) !important;
+}
+
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-configure-button:focus-visible {
+	outline: 2px solid var(--w2f-pc-neon-accent) !important;
+	outline-offset: 2px !important;
+}
+
+/* Add to Cart (secondary): outline only – transparent bg, light border, white text */
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-add-default-to-cart {
+	background: transparent !important;
+	background-color: transparent !important;
+	color: #ffffff !important;
+	border: 2px solid rgba(255, 255, 255, 0.5) !important;
+	box-shadow: none !important;
+}
+
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-add-default-to-cart:hover {
+	background: rgba(255, 255, 255, 0.1) !important;
+	background-color: rgba(255, 255, 255, 0.1) !important;
+	color: #ffffff !important;
+	border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-add-default-to-cart:focus-visible {
+	outline: 2px solid rgba(255, 255, 255, 0.6) !important;
+	outline-offset: 2px !important;
 }
 
 /* ============================================
@@ -227,6 +288,7 @@
 .w2f-pc-modal-overlay.active {
 	display: block;
 	opacity: 1;
+	padding-top: var(--w2f-pc-header-offset, 92px);
 }
 
 .w2f-pc-modal-overlay .w2f-pc-modal-content {
@@ -539,18 +601,34 @@
 	width: 100% !important;
 }
 
+/* Native select (before Select2 replaces it) and fallback - match browser preview styling */
+select.component-select,
+select.component-select.w2f-pc-select2-dropdown {
+	border-radius: 12px !important;
+	border-top-left-radius: 12px !important;
+	border-top-right-radius: 12px !important;
+	border-bottom-right-radius: 12px !important;
+	border-bottom-left-radius: 12px !important;
+	padding: 18px !important;
+	padding-top: 18px !important;
+	padding-bottom: 18px !important;
+	padding-left: 18px !important;
+	padding-right: 18px !important;
+}
+
 /* Select2 container */
 .select2-container--default {
 	width: 100% !important;
 }
 
+/* Select2 visible trigger - match browser preview (12px radius, 18px padding) */
 .select2-container--default .select2-selection--single {
 	background-color: var(--w2f-pc-panel-bg) !important;
 	border: 1px solid var(--w2f-pc-dark-border-light) !important;
-	border-radius: var(--w2f-pc-radius-md) !important;
+	border-radius: 12px !important;
 	height: auto !important;
-	min-height: 48px !important;
-	padding: var(--w2f-pc-spacing-sm) var(--w2f-pc-spacing-md) !important;
+	min-height: 52px !important;
+	padding: 18px !important;
 	display: flex !important;
 	align-items: center !important;
 }
@@ -573,7 +651,7 @@
 .select2-container--default .select2-selection--single .select2-selection__rendered {
 	color: var(--w2f-pc-dark-text-primary) !important;
 	line-height: normal !important;
-	padding: 0 !important;
+	padding: var(--w2f-pc-spacing-xs) 0 !important;
 	display: flex !important;
 	align-items: center !important;
 	gap: var(--w2f-pc-spacing-md) !important;
@@ -624,12 +702,14 @@
 .select2-dropdown {
 	background-color: var(--w2f-pc-panel-bg) !important;
 	border: 1px solid var(--w2f-pc-dark-border-light) !important;
-	border-radius: var(--w2f-pc-radius-md) !important;
+	border-radius: var(--w2f-pc-radius-lg) !important;
 	box-shadow: var(--w2f-pc-shadow-lg) !important;
-	z-index: 100002 !important;
+	z-index: 999994 !important;
 	position: absolute !important;
 	display: block !important;
 	box-sizing: border-box !important;
+	padding: var(--w2f-pc-spacing-sm) 0 !important;
+	overflow: hidden !important;
 }
 
 /* Ensure dropdown width matches select container and is visible */
@@ -644,7 +724,7 @@
 
 /* When dropdown is in body (configurator modal open), keep it above modal and use dark theme */
 body:has(.w2f-pc-modal-overlay.active) .select2-dropdown {
-	z-index: 100002 !important;
+	z-index: 999994 !important;
 	background-color: #202020 !important;
 	border-color: rgba(255, 255, 255, 0.1) !important;
 }
@@ -720,6 +800,7 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 	max-height: 400px !important;
 	overflow-y: auto !important;
 	overflow-x: hidden !important;
+	padding: var(--w2f-pc-spacing-sm) !important;
 }
 
 /* Select2 loading */
@@ -1194,33 +1275,35 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 	padding: 0;
 }
 
+/* Modal header tabs – match Configurator.tsx: rounded buttons, 300ms transition, hover animation */
 .w2f-pc-modal-header .w2f-pc-tabs a,
 .elementor-widget .w2f-pc-modal-header .w2f-pc-tabs a,
 .elementor-element .w2f-pc-modal-header .w2f-pc-tabs a {
 	display: block !important;
-	padding: var(--w2f-pc-spacing-sm) var(--w2f-pc-spacing-lg) !important;
+	padding: 8px 24px !important;
 	text-decoration: none !important;
 	color: var(--w2f-pc-dark-text-muted) !important;
 	border: 1px solid transparent !important;
-	border-radius: 6px !important;
+	border-radius: var(--w2f-pc-radius-md) !important;
 	margin: 0 !important;
-	transition: all var(--w2f-pc-transition-base) !important;
+	transition: all 0.3s ease !important;
 	font-weight: var(--w2f-pc-font-weight-bold) !important;
 	font-size: var(--w2f-pc-font-size-sm) !important;
 	font-family: var(--w2f-pc-font-family) !important;
 	text-transform: uppercase !important;
 	letter-spacing: 0.05em !important;
 	position: relative !important;
+	background: transparent !important;
 }
 
 .w2f-pc-modal-header .w2f-pc-tabs a:hover {
-	color: var(--w2f-pc-dark-text-primary) !important;
+	color: #ffffff !important;
 	background: rgba(255, 255, 255, 0.05) !important;
 }
 
 .w2f-pc-modal-header .w2f-pc-tabs .active a {
 	color: var(--w2f-pc-neon-accent) !important;
-	border-color: var(--w2f-pc-neon-accent) !important;
+	border-color: rgba(245, 137, 31, 0.5) !important;
 	background: rgba(255, 255, 255, 0.1) !important;
 	box-shadow: 0 0 15px rgba(245, 137, 31, 0.2) !important;
 }
@@ -1229,13 +1312,13 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 .elementor-widget .w2f-pc-configurator-column .w2f-pc-tabs a,
 .elementor-element .w2f-pc-configurator-column .w2f-pc-tabs a {
 	display: block !important;
-	padding: var(--w2f-pc-spacing-sm) var(--w2f-pc-spacing-lg) !important;
+	padding: 8px 16px !important;
 	text-decoration: none !important;
 	color: var(--w2f-pc-dark-text-muted) !important;
-	border: 1px solid var(--w2f-pc-dark-border-light) !important;
-	border-radius: 9999px !important;
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
+	border-radius: var(--w2f-pc-radius-full) !important;
 	margin: 0 !important;
-	transition: all var(--w2f-pc-transition-base) !important;
+	transition: all 0.3s ease !important;
 	font-weight: var(--w2f-pc-font-weight-bold) !important;
 	font-size: var(--w2f-pc-font-size-xs) !important;
 	font-family: var(--w2f-pc-font-family) !important;
@@ -1246,7 +1329,7 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 }
 
 .w2f-pc-configurator-column .w2f-pc-tabs a:hover {
-	color: var(--w2f-pc-dark-text-primary) !important;
+	color: #ffffff !important;
 	background: rgba(255, 255, 255, 0.05) !important;
 }
 
@@ -1256,24 +1339,10 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 	border-color: var(--w2f-pc-neon-accent) !important;
 }
 
-/* Desktop: hide pill tabs in configurator column; show header tabs as non-pill */
+/* Desktop: hide pill tabs in configurator column; header tabs keep button style (Configurator.tsx look) */
 @media (min-width: 769px) {
 	.w2f-pc-configurator-column .w2f-pc-tabs {
 		display: none !important;
-	}
-	.w2f-pc-modal-header .w2f-pc-tabs a,
-	.elementor-widget .w2f-pc-modal-header .w2f-pc-tabs a,
-	.elementor-element .w2f-pc-modal-header .w2f-pc-tabs a {
-		border-radius: 0 !important;
-		border: none !important;
-		border-bottom: 2px solid transparent !important;
-		background: transparent !important;
-	}
-	.w2f-pc-modal-header .w2f-pc-tabs .active a {
-		background: transparent !important;
-		border-color: transparent !important;
-		border-bottom-color: var(--w2f-pc-neon-accent) !important;
-		box-shadow: none !important;
 	}
 	/* Desktop: Show thumbnail grid, hide mobile dropdown */
 	.w2f-pc-thumbnail-wrapper {
@@ -1996,9 +2065,9 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 		gap: var(--w2f-pc-spacing-sm);
 	}
 
-	.w2f-pc-configure-button,
-	.w2f-pc-add-default-to-cart {
-		width: 100%;
+	.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-configure-button,
+	.w2f-pc-configurator-wrapper .w2f-pc-action-buttons button.w2f-pc-add-default-to-cart {
+		width: 100% !important;
 	}
 
 	.w2f-pc-modal-content {
@@ -2602,7 +2671,8 @@ body:has(.w2f-pc-modal-overlay.active) .select2-search--dropdown .select2-search
 .w2f-pc-modal-overlay .w2f-pc-tabs .active a {
 	color: #f5891f !important;
 	background: rgba(255, 255, 255, 0.1) !important;
-	border-color: #f5891f !important;
+	border-color: rgba(245, 137, 31, 0.5) !important;
+	box-shadow: 0 0 15px rgba(245, 137, 31, 0.2) !important;
 }
 
 .w2f-pc-modal-overlay.active .w2f-pc-component .component-options select,

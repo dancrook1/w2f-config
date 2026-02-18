@@ -144,15 +144,16 @@ class W2F_PC_Product extends WC_Product {
 		$calculating_price = true;
 		
 		try {
-			// Get the stored price (set by cart calculation).
+			// Get the stored price (set by cart calculation, or from product meta).
 			$price = parent::get_price( $context );
 			
-			// If price is set (from cart), return it.
-			if ( $price > 0 ) {
+			// Use stored price only when it looks like a cart-calculated price (significant amount).
+			// Placeholder prices (0, 0.01) in product meta should be ignored in favor of calculated configurator price.
+			if ( $price > 1 ) {
 				return $price;
 			}
 			
-			// Calculate price from default configuration for display.
+			// Calculate price from default configuration for display (product page, archives, Bricks elements, etc.).
 			$default_configuration = $this->get_default_configuration();
 			if ( ! empty( $default_configuration ) ) {
 				// Calculate price including tax for display.
@@ -162,7 +163,7 @@ class W2F_PC_Product extends WC_Product {
 				}
 			}
 			
-			return 0;
+			return $price > 0 ? $price : 0;
 		} finally {
 			$calculating_price = false;
 		}
@@ -563,12 +564,10 @@ class W2F_PC_Product extends WC_Product {
 				return apply_filters( 'woocommerce_empty_price_html', '', $this );
 			}
 			
-			// Format and return the price.
-			// Don't apply woocommerce_get_price_html filter here to avoid infinite loop
-			// (it's already being filtered by filter_price_html in class-w2f-pc-display.php).
+			// Format and return the price. Apply woocommerce_get_price_html filter for consistency
+			// with other code paths (Bricks, etc.) and to allow other plugins to modify.
 			$price_html = wc_price( $calculated_price );
-			
-			return $price_html;
+			return apply_filters( 'woocommerce_get_price_html', $price_html, $this );
 		} finally {
 			$calculating_price_html = false;
 		}
